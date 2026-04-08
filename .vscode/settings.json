@@ -1,0 +1,14 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "editor.fontSize": 16,
+    "editor.minimap.enabled": false,
+    "editor.mouseWheelZoom": true,
+    "accessibility.verbosity.debug": false,
+    "accessibility.verbosity.find": false,
+    "accessibility.verbosity.inlineChat": false,
+    "accessibility.verbosity.replEditor": false,
+    "accessibility.verbosity.terminal": false,
+    "python.terminal.shellIntegration.enabled": false,
+    "accessibility.verbosity.sourceControl": false
+}
