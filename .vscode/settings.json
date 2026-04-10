@@ -2,17 +2,11 @@
     "editor.fontSize": 16,
     "files.autoSave": "onFocusChange",
     "workbench.colorTheme": "Dark Modern",
-    "terminal.integrated.initialHint": false,
-    "terminal.integrated.accessibleViewPreserveCursorPosition": true,
-    "terminal.integrated.accessibleViewFocusOnCommandExecution": true,
-    "terminal.integrated.cursorStyle": "line",
     "workbench.startupEditor": "none",
-    "gitlens.ai.model": "vscode",
-    "gitlens.ai.vscode.model": "copilot:gpt-4.1",
+    "terminal.integrated.cursorBlinking": true,
     "accessibility.verbosity.debug": false,
     "accessibility.verbosity.inlineChat": false,
     "accessibility.verbosity.terminal": false,
-    "python.terminal.shellIntegration.enabled": false,
     "accessibility.verbosity.sourceControl": false,
     "accessibility.verbosity.replEditor": false,
     "accessibility.verbosity.find": false,
@@ -49,7 +43,8 @@
         // 3. 给 PowerShell 起个新名字（冒号左边的名字你可以随便改）
         "HP PowerShell": {
             "source": "PowerShell",
-            "icon": "terminal-powershell"
+            "icon": "terminal-powershell",
+            "overrideName": true
         },
         // 4. V100 终端
         "V100": {
@@ -63,7 +58,8 @@
                 "C:\\Users\\HP\\.ssh\\id_rsa_windows",
                 "cd /home/ResidualRemove/ && exec bash"
             ],
-            "icon": "server"
+            "icon": "server",
+            "overrideName": true
         }
     },
 }
