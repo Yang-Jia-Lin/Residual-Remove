@@ -1,0 +1,11 @@
+{
+  "seed": 42,
+  "device": "cpu",
+  "num_workers": 0,
+  "data_root": "data",
+  "checkpoint_root": "logs/checkpoints",
+  "log_root": "logs/terminal_logs",
+  "result_root": "results",
+  "default_dataset": "cifar10",
+  "synthetic_if_missing": true
+}

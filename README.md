@@ -1,67 +1,40 @@
 # ResidualRemove
 
-用于做 ResNet 残差连接删除实验的最小脚手架，目标是比较不同残差保留比例下的：
+ResidualRemove 是一个围绕“删除残差连接并用轻量补偿器恢复精度”的初版实验代码库。当前版本优先完成实验骨架、统一配置、可运行脚本和基本分析工具，方便后续替换成真实预训练权重、ImageNet/CIFAR 数据和设备测量结果。
 
-- Top-1 Accuracy
-- Peak Memory
-- Activation Lifetime Proxy
-- Latency / Throughput
+## 当前范围
 
-## 项目结构
-
-```text
-ResidualRemove/
-├─ configs/
-│  └─ ablation_presets.json
-├─ results/
-├─ scripts/
-│  ├─ run_ablation_suite.py
-│  └─ train_eval.py
-├─ src/
-│  └─ residual_remove/
-│     ├─ models/
-│     │  └─ resnet_ablation.py
-│     └─ utils/
-│        ├─ data.py
-│        ├─ metrics.py
-│        └─ training.py
-└─ requirements.txt
-```
+- 已建立与你的实验设计对应的目录结构。
+- 已提供 ResNet 和 MobileNetV2 的可切换残差/补偿器实现骨架。
+- 已提供校准、评估、系统模拟、可视化和 4 组实验入口脚本。
+- 默认支持 `synthetic` 回退模式，在没有真实数据和权重时也可以跑通 smoke test。
 
 ## 安装
 
-```powershell
-.\.venv\Scripts\python -m pip install -r requirements.txt
+```bash
+pip install -r requirements.txt
 ```
 
-## 单次训练 + 评测
+## 推荐起步命令
 
-```powershell
-.\.venv\Scripts\python scripts\train_eval.py `
-  --model resnet18 `
-  --dataset cifar10 `
-  --data-root .\data `
-  --epochs 1 `
-  --batch-size 64 `
-  --ablation-mode random_ratio `
-  --ablation-value 0.5 `
-  --output-dir .\results\resnet18_half
+```bash
+python experiments/Exp1_Motivation/run_acc_drop.py --device cpu --dataset synthetic
+python experiments/Exp1_Motivation/run_residual_stats.py --device cpu --dataset synthetic
+python experiments/Exp2_Compensator/run_benchmark.py --device cpu --dataset synthetic --epochs 1 --calib-size 32
+python experiments/Exp3_System/run_split_inference.py --device cpu --dataset synthetic
+python experiments/Exp4_Ablation/run_partial_removal.py --device cpu --dataset synthetic
 ```
 
-## 批量跑预设实验
+## 关键约定
 
-```powershell
-.\.venv\Scripts\python scripts\run_ablation_suite.py `
-  --dataset cifar10 `
-  --data-root .\data `
-  --epochs 1 `
-  --batch-size 64 `
-  --output-root .\results
-```
+- `configs/default_env.yaml` 管理数据根目录、结果目录、随机种子和默认设备。
+- `configs/models.yaml` 管理模型基础超参。
+- `configs/compensator.yaml` 管理校准训练和补偿器参数。
+- `configs/system.yaml` 管理带宽、能耗和内存预算假设。
+- 所有实验脚本都会把结果写入 `results/` 下对应子目录。
 
-## 说明
+## 当前限制
 
-- `random_ratio`：随机删除指定比例的残差连接。
-- `stage_progressive`：按 stage 删除，例如传入 `1` 表示删除 `layer1`，传入 `3` 表示删除 `layer1~layer3`。
-- `full`：删除全部残差连接。
-- `Activation Lifetime Proxy` 不是底层显存分配器级别的真实生命周期，而是一个针对残差缓存张量的近似代理指标，用于横向比较不同 ablation 方案。
+- 没有附带预训练权重，因此精度结果主要用于验证 pipeline，而不是最终论文指标。
+- `split_runner` 当前按 block 边界模拟切分，适合作为初版系统实验，不是最终部署框架。
+- 能耗、吞吐量与并发分析目前是 profile + analytic simulation 的组合，后续可以替换为真实设备测量。

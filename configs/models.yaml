@@ -1,0 +1,22 @@
+{
+  "resnet18": {
+    "family": "resnet",
+    "depth": 18,
+    "num_classes": 10,
+    "input_size": 32,
+    "block_variant": "basic"
+  },
+  "resnet50": {
+    "family": "resnet",
+    "depth": 50,
+    "num_classes": 1000,
+    "input_size": 224,
+    "block_variant": "bottleneck"
+  },
+  "mobilenet_v2": {
+    "family": "mobilenet",
+    "width_mult": 1.0,
+    "num_classes": 10,
+    "input_size": 32
+  }
+}
