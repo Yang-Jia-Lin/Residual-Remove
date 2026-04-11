@@ -1,0 +1,10 @@
+dataset_source,model,mode,removed_count,removed_blocks,top1,top5,loss,top1_drop
+synthetic,resnet18,full,0,,12.5,25.0,2.31524658203125,0.0
+synthetic,resnet18,plain,1,layer4.1,12.5,75.0,2.2755775451660156,0.0
+synthetic,resnet18,plain,2,"layer4.0,layer4.1",12.5,37.5,2.298651695251465,0.0
+synthetic,resnet18,plain,3,"layer3.1,layer4.0,layer4.1",12.5,37.5,2.3023788928985596,0.0
+synthetic,resnet18,plain,4,"layer3.0,layer3.1,layer4.0,layer4.1",12.5,37.5,2.3048880100250244,0.0
+synthetic,resnet18,plain,5,"layer2.1,layer3.0,layer3.1,layer4.0,layer4.1",12.5,37.5,2.3030402660369873,0.0
+synthetic,resnet18,plain,6,"layer2.0,layer2.1,layer3.0,layer3.1,layer4.0,layer4.1",12.5,37.5,2.304093360900879,0.0
+synthetic,resnet18,plain,7,"layer1.1,layer2.0,layer2.1,layer3.0,layer3.1,layer4.0,layer4.1",12.5,37.5,2.303020477294922,0.0
+synthetic,resnet18,plain,8,"layer1.0,layer1.1,layer2.0,layer2.1,layer3.0,layer3.1,layer4.0,layer4.1",12.5,37.5,2.302957057952881,0.0

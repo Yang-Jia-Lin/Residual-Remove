@@ -1,3 +1,5 @@
+"""Compensator operators used by the patching pipeline."""
+
 from __future__ import annotations
 
 import torch
@@ -5,21 +7,30 @@ from torch import nn
 
 
 class BaseCompensator(nn.Module):
+    """Base class for all compensator operators."""
+
     is_compensator = True
     fusible = False
 
 
 class IdentityCompensator(BaseCompensator):
+    """No-op baseline."""
+
     fusible = True
+
+    def __init__(self, channels: int = 0, rank: int = 16, activation: str = "gelu") -> None:
+        super().__init__()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x
 
 
 class ScalarCompensator(BaseCompensator):
+    """Single-parameter scaling baseline."""
+
     fusible = True
 
-    def __init__(self) -> None:
+    def __init__(self, channels: int = 0, rank: int = 16, activation: str = "gelu") -> None:
         super().__init__()
         self.alpha = nn.Parameter(torch.tensor(1.0))
 
@@ -28,9 +39,11 @@ class ScalarCompensator(BaseCompensator):
 
 
 class AffineCompensator(BaseCompensator):
+    """Per-channel affine compensator."""
+
     fusible = True
 
-    def __init__(self, channels: int) -> None:
+    def __init__(self, channels: int, rank: int = 16, activation: str = "gelu") -> None:
         super().__init__()
         self.gamma = nn.Parameter(torch.ones(1, channels, 1, 1))
         self.beta = nn.Parameter(torch.zeros(1, channels, 1, 1))
@@ -40,11 +53,13 @@ class AffineCompensator(BaseCompensator):
 
 
 class Linear1x1Compensator(BaseCompensator):
+    """Channel-wise 1x1 projection that can be re-parameterized into the backbone."""
+
     fusible = True
 
-    def __init__(self, channels: int, bias: bool = True) -> None:
+    def __init__(self, channels: int, rank: int = 16, activation: str = "gelu") -> None:
         super().__init__()
-        self.proj = nn.Conv2d(channels, channels, kernel_size=1, bias=bias)
+        self.proj = nn.Conv2d(channels, channels, kernel_size=1, bias=True)
         nn.init.dirac_(self.proj.weight)
         if self.proj.bias is not None:
             nn.init.zeros_(self.proj.bias)
@@ -53,8 +68,10 @@ class Linear1x1Compensator(BaseCompensator):
         return self.proj(x)
 
 
-class LowRankCompensator(BaseCompensator):
-    def __init__(self, channels: int, rank: int = 16) -> None:
+class LoRACompensator(BaseCompensator):
+    """Low-rank linear compensator."""
+
+    def __init__(self, channels: int, rank: int = 16, activation: str = "gelu") -> None:
         super().__init__()
         rank = max(1, min(rank, channels))
         self.down = nn.Conv2d(channels, rank, kernel_size=1, bias=False)
@@ -67,6 +84,8 @@ class LowRankCompensator(BaseCompensator):
 
 
 class AdapterCompensator(BaseCompensator):
+    """Nonlinear upper-bound compensator."""
+
     def __init__(self, channels: int, rank: int = 16, activation: str = "gelu") -> None:
         super().__init__()
         rank = max(1, min(rank, channels))
@@ -82,6 +101,9 @@ class AdapterCompensator(BaseCompensator):
         return self.up(self.act(self.down(x)))
 
 
+LowRankCompensator = LoRACompensator
+
+
 def _build_activation(name: str) -> nn.Module:
     key = name.lower()
     if key == "relu":
@@ -90,7 +112,7 @@ def _build_activation(name: str) -> nn.Module:
         return nn.GELU()
     if key == "silu":
         return nn.SiLU(inplace=True)
-    raise ValueError(f"Unsupported adapter activation: {name}")
+    raise ValueError(f"Unsupported activation: {name}")
 
 
 def build_compensator(
@@ -99,19 +121,21 @@ def build_compensator(
     rank: int = 16,
     activation: str = "gelu",
 ) -> BaseCompensator:
+    """Build a compensator by name."""
+
     key = (name or "identity").lower()
     if key in {"identity", "none"}:
-        return IdentityCompensator()
+        return IdentityCompensator(channels=channels, rank=rank, activation=activation)
     if key == "scalar":
-        return ScalarCompensator()
+        return ScalarCompensator(channels=channels, rank=rank, activation=activation)
     if key == "affine":
-        return AffineCompensator(channels)
+        return AffineCompensator(channels=channels, rank=rank, activation=activation)
     if key in {"linear1x1", "linear_1x1", "linear"}:
-        return Linear1x1Compensator(channels)
+        return Linear1x1Compensator(channels=channels, rank=rank, activation=activation)
     if key in {"low_rank", "lora"}:
-        return LowRankCompensator(channels, rank=rank)
+        return LoRACompensator(channels=channels, rank=rank, activation=activation)
     if key == "adapter":
-        return AdapterCompensator(channels, rank=rank, activation=activation)
+        return AdapterCompensator(channels=channels, rank=rank, activation=activation)
     raise ValueError(f"Unsupported compensator: {name}")
 
 
