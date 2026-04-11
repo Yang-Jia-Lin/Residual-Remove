@@ -1,4 +1,4 @@
-# nohup Scripts/Exp1_Motivation/run2_collaborate_cost.sh < /dev/null > Results/Exp1_Motivation/Motivation2_Collaborate_cost/log_$(date +%Y%m%d_%H%M).log 2>&1 &
+# nohup Scripts/Exp1_Motivation/run2_collaborate_cost.sh < /dev/null > Results/Exp1_Motivation/Motivation2_Collaborate_cost/$(date +%Y%m%d_%H%M).log 2>&1 &
 
 python -m Scripts.Exp1_Motivation.run2_collaborate_cost \
     --model resnet50 \

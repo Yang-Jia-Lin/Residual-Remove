@@ -19,6 +19,7 @@ import io
 import sys
 import time
 from pathlib import Path
+from datetime import datetime
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -78,9 +79,10 @@ def main() -> None:
     bandwidth_list       = [float(b) for b in sys_cfg["bandwidth_mbps"]]
     protocol_overhead_ms = float(sys_cfg["protocol_overhead_ms"])
 
+    current_time = datetime.now().strftime("%Y%m%d_%H%M")
     output_path = Path(
         args.output
-        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation2_Collaborate_cost" / "system_cost.csv"
+        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation2_Collaborate_cost" / f"{current_time}_system_cost.csv"
     )
 
     print(f"\n[Exp1-System] 模型：{args.model}")

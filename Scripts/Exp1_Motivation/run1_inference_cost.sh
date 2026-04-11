@@ -1,10 +1,10 @@
-# nohup Scripts/Exp1_Motivation/run1_inference_cost.sh < /dev/null > Results/Exp1_Motivation/Motivation1_Inference_cost/log_$(date +%Y%m%d_%H%M).log 2>&1 &
+# nohup Scripts/Exp1_Motivation/run1_inference_cost.sh < /dev/null > Results/Exp1_Motivation/Motivation1_Inference_cost/$(date +%Y%m%d_%H%M).log 2>&1 &
     
 python -m Scripts.Exp1_Motivation.run1_inference_cost \
     --model resnet50 \
     --dataset imagenet \
     --device cpu \
-    --batch-size 64 \
+    --batch-size 16 \
     --num-workers 4 \
     --pretrained
 

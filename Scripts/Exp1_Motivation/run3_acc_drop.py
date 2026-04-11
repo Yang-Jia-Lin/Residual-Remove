@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from datetime import datetime
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -38,9 +39,10 @@ def main() -> None:
     blocks = model.get_block_names()
 
     # 输出路径：命令行 > yaml result_root 下的默认位置
+    current_time = datetime.now().strftime("%Y%m%d_%H%M")
     output_path = Path(
         args.output
-        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation3_Acc_Drop" / "acc_drop.csv"
+        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation3_Acc_Drop" / f"{current_time}_acc_drop.csv"
     )
 
     print(f"\n[Exp1] 开始精度下降实验")

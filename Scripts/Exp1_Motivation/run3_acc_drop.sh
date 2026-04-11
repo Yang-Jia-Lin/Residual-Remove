@@ -1,4 +1,4 @@
-# nohup Scripts/Exp1_Motivation/run3_acc_drop.sh < /dev/null > Results/Exp1_Motivation/Motivation3_Acc_drop/log_$(date +%Y%m%d_%H%M).log 2>&1 &
+# nohup Scripts/Exp1_Motivation/run3_acc_drop.sh < /dev/null > Results/Exp1_Motivation/Motivation3_Acc_drop/$(date +%Y%m%d_%H%M).log 2>&1 &
 
 python -m Scripts.Exp1_Motivation.run3_acc_drop \
     --model resnet50 \

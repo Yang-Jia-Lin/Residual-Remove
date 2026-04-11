@@ -30,6 +30,7 @@ import argparse
 import sys
 import time
 from pathlib import Path
+from datetime import datetime
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -131,9 +132,10 @@ def main() -> None:
     cfg    = setup["cfg"]
     blocks = model.get_block_names()
 
+    current_time = datetime.now().strftime("%Y%m%d_%H%M")
     output_path = Path(
         args.output
-        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation1_Inference_cost" / "memory_cost.csv"
+        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation1_Inference_cost" / f"{current_time}_memory_cost.csv"
     )
 
     if device.type != "cuda":
