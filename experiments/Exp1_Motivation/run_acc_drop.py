@@ -1,75 +1,132 @@
+"""Exp1 动机实验：逐步删除残差块，记录精度下降趋势。
+
+典型运行命令（ImageNet + GPU）：
+
+    python experiments/Exp1_Motivation/run_acc_drop.py \
+        --model resnet50 \
+        --dataset imagenet \
+        --device cuda:0 \
+        --batch-size 128 \
+        --num-workers 8 \
+        --pretrained
+
+调试时可以加 --max-batches 20 --val-size 1000 快速验证流程是否正确，
+确认无误后再去掉这两个参数跑完整实验。
+"""
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import yaml
 from experiments.common import add_common_args, build_setup
 from src.training.trainer import evaluate_model
 from src.utils.runtime import write_csv
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Measure accuracy drop under progressive residual removal.")
+    parser = argparse.ArgumentParser(
+        description="逐步删除残差块，记录 Top-1/Top-5 精度的下降趋势（动机实验 Exp1）。"
+    )
     add_common_args(parser)
-    parser.add_argument("--output", default="results/motivation/acc_drop.csv")
+    parser.add_argument(
+        "--output", default=None,
+        help="输出 CSV 的路径。不指定则自动写到 yaml result_root 下。"
+    )
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
     setup = build_setup(args, compensator_name="identity")
-    model = setup["model"]
+
+    model  = setup["model"]
     bundle = setup["bundle"]
     device = setup["device"]
+    cfg    = setup["cfg"]
     blocks = model.get_block_names()
 
-    rows: list[dict[str, float | int | str]] = []
-    full_metrics = evaluate_model(model, bundle.val_loader, device=device, mode="full", max_batches=args.max_batches)
-    rows.append(
-        {
-            "dataset_source": bundle.source,
-            "model": args.model,
-            "mode": "full",
-            "removed_count": 0,
-            "removed_blocks": "",
-            "top1": full_metrics["top1"],
-            "top5": full_metrics["top5"],
-            "loss": full_metrics["loss"],
-            "top1_drop": 0.0,
-        }
+    # 输出路径：命令行 > yaml result_root 下的默认位置
+    output_path = Path(
+        args.output
+        or Path(cfg["paths"]["result_root"]) / "motivation" / "acc_drop.csv"
     )
 
+    print(f"\n[Exp1] 开始精度下降实验")
+    print(f"[Exp1] 共 {len(blocks)} 个残差块，将依次从最后一个开始删除")
+    print(f"[Exp1] 结果将写入：{output_path}\n")
+
+    rows: list[dict] = []
+
+    # ── 第 0 步：full mode 作为 baseline ─────────────────────────────
+    print(f"[0/{len(blocks)}] 评估 baseline（full mode，保留所有残差）...")
+    full_metrics = evaluate_model(
+        model, bundle.val_loader,
+        device=device, mode="full",
+        max_batches=args.max_batches,
+    )
+    print(
+        f"          loss={full_metrics.loss:.4f}  "
+        f"top1={full_metrics.top1:.2f}%  "
+        f"top5={full_metrics.top5:.2f}%"
+    )
+
+    rows.append({
+        "dataset":        bundle.source,
+        "model":          args.model,
+        "mode":           "full",
+        "removed_count":  0,
+        "removed_blocks": "",
+        "top1":           round(full_metrics.top1, 4),
+        "top5":           round(full_metrics.top5, 4),
+        "loss":           round(full_metrics.loss, 6),
+        "top1_drop":      0.0,
+    })
+
+    # ── 第 1~N 步：从最后一个块开始，逐步扩大删除范围 ──────────────────
+    # 这个顺序设计是为了让图表上的 X 轴从右到左表示"从深层到浅层"，
+    # 和直觉一致：深层块被删对精度影响更大。
     for remove_count in range(1, len(blocks) + 1):
-        removed = blocks[-remove_count:]
+        removed = blocks[-remove_count:]   # 始终包含最后 remove_count 个块
+        print(
+            f"[{remove_count}/{len(blocks)}] 删除最后 {remove_count} 个块"
+            f"（{removed[0]} → {removed[-1]}）..."
+        )
+
         metrics = evaluate_model(
-            model,
-            bundle.val_loader,
-            device=device,
-            mode="plain",
+            model, bundle.val_loader,
+            device=device, mode="plain",
             removed_blocks=removed,
             max_batches=args.max_batches,
         )
-        rows.append(
-            {
-                "dataset_source": bundle.source,
-                "model": args.model,
-                "mode": "plain",
-                "removed_count": remove_count,
-                "removed_blocks": ",".join(removed),
-                "top1": metrics["top1"],
-                "top5": metrics["top5"],
-                "loss": metrics["loss"],
-                "top1_drop": full_metrics["top1"] - metrics["top1"],
-            }
+
+        top1_drop = full_metrics.top1 - metrics.top1
+        print(
+            f"          loss={metrics.loss:.4f}  "
+            f"top1={metrics.top1:.2f}%  "
+            f"top5={metrics.top5:.2f}%  "
+            f"drop={top1_drop:+.2f}%"
         )
 
-    output_path = write_csv(args.output, rows)
-    print(f"Saved accuracy-drop results to {output_path}")
+        rows.append({
+            "dataset":        bundle.source,
+            "model":          args.model,
+            "mode":           "plain",
+            "removed_count":  remove_count,
+            "removed_blocks": ",".join(removed),
+            "top1":           round(metrics.top1, 4),
+            "top5":           round(metrics.top5, 4),
+            "loss":           round(metrics.loss, 6),
+            "top1_drop":      round(top1_drop, 4),
+        })
+
+    saved = write_csv(output_path, rows)
+    print(f"\n[Exp1] 完成。结果已保存至：{saved}")
 
 
 if __name__ == "__main__":

@@ -24,22 +24,30 @@ def resolve_device(device: str) -> torch.device:
     return torch.device(device)
 
 
-def write_csv(path: str | Path, rows: list[dict[str, Any]]) -> Path:
-    output_path = resolve_path(path)
-    ensure_dir(output_path.parent)
+def write_csv(output: str | Path, rows: list[dict]) -> Path:
+    """把一组字典写成 CSV 文件，自动创建父目录。
+    
+    列顺序由第一行字典的 key 顺序决定，之后每行必须有相同的 key。
+    返回实际写入的路径，方便调用方打印确认信息。
+    """
+    path = Path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
     if not rows:
-        output_path.write_text("", encoding="utf-8")
-        return output_path
-    fieldnames = list(rows[0].keys())
-    with output_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        path.write_text("")
+        return path
+
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         writer.writeheader()
         writer.writerows(rows)
-    return output_path
+
+    return path
 
 
-def tensor_bytes(tensor: torch.Tensor) -> int:
-    return tensor.element_size() * tensor.numel()
+def tensor_bytes(tensor) -> int:
+    """计算一个 Tensor 占用的字节数。"""
+    return tensor.numel() * tensor.element_size()
 
 
 def safe_item(value: torch.Tensor | float | int) -> float:
