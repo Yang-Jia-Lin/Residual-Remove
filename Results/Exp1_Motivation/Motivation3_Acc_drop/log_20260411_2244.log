@@ -1,0 +1,17 @@
+[setup] 配置加载自：Configs/default_env.yaml
+[setup] 运行设备：cpu
+[setup] 随机种子：42
+[setup] 数据集：imagenet，图片尺寸：224×224
+[setup] 数据来源：imagenet，类别数：1000
+[setup] 验证集批次数：8
+[setup] 模型：resnet50，残差块数：16，预训练：True
+
+[Exp1] 开始精度下降实验
+[Exp1] 共 16 个残差块，将依次从最后一个开始删除
+[Exp1] 结果将写入：Results/Exp1_Motivation/Motivation3_Acc_Drop/acc_drop.csv
+
+[0/16] 评估 baseline（full mode，保留所有残差）...
+          loss=1.0015  top1=92.80%  top5=98.30%
+[1/16] 删除最后 1 个块（layer4.2 → layer4.2）...
+          loss=5.7622  top1=68.20%  top5=86.00%  drop=+24.60%
+[2/16] 删除最后 2 个块（layer4.1 → layer4.2）...

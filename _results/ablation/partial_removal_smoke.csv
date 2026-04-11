@@ -1,5 +1,0 @@
-dataset_source,model,strategy,removed_count,removed_blocks,chain_safe_blocks,top1,top5,loss,final_calibration_loss
-synthetic,resnet18,full,8,"layer1.0,layer1.1,layer2.0,layer2.1,layer3.0,layer3.1,layer4.0,layer4.1",8,12.5,62.5,2.3028228282928467,0.47156044840812683
-synthetic,resnet18,front_boundary,2,"layer1.0,layer1.1",2,0.0,25.0,2.350407361984253,0.17585639655590057
-synthetic,resnet18,back_boundary,2,"layer4.0,layer4.1",2,12.5,62.5,2.282776355743408,0.8762635588645935
-synthetic,resnet18,both_boundary,4,"layer1.0,layer1.1,layer4.0,layer4.1",4,12.5,62.5,2.2905540466308594,0.48543649911880493

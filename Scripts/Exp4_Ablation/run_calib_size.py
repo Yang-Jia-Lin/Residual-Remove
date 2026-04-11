@@ -16,24 +16,21 @@ from Src.Utils.runtime import write_csv
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Generalization test across architectures.")
+    parser = argparse.ArgumentParser(description="Ablation over calibration set size.")
     add_common_args(parser)
-    parser.add_argument("--models", default="resnet18,mobilenet_v2")
     parser.add_argument("--compensator", default="linear1x1")
+    parser.add_argument("--sizes", default="32,64,128,256")
     parser.add_argument("--epochs", type=int, default=None)
-    parser.add_argument("--calib-size", type=int, default=None)
-    parser.add_argument("--output", default="results/ablation/generalization.csv")
+    parser.add_argument("--output", default="results/ablation/calib_size.csv")
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
-    model_names = [item.strip() for item in args.models.split(",") if item.strip()]
+    calib_sizes = [int(item.strip()) for item in args.sizes.split(",") if item.strip()]
     rows = []
-    original_model_name = args.model
 
-    for model_name in model_names:
-        args.model = model_name
+    for calib_size in calib_sizes:
         setup = build_setup(args, compensator_name=args.compensator)
         configs = setup["configs"]
         model = setup["model"]
@@ -44,7 +41,7 @@ def main() -> None:
 
         calibration_loader = build_calibration_loader(
             bundle.train_dataset,
-            calib_size=args.calib_size or int(training_cfg["calib_size"]),
+            calib_size=calib_size,
             batch_size=int(training_cfg["batch_size"]),
             seed=args.seed,
         )
@@ -72,8 +69,9 @@ def main() -> None:
         rows.append(
             {
                 "dataset_source": bundle.source,
-                "model": model_name,
+                "model": args.model,
                 "compensator": args.compensator,
+                "calib_size": calib_size,
                 "top1": metrics["top1"],
                 "top5": metrics["top5"],
                 "loss": metrics["loss"],
@@ -81,9 +79,8 @@ def main() -> None:
             }
         )
 
-    args.model = original_model_name
     output_path = write_csv(args.output, rows)
-    print(f"Saved generalization results to {output_path}")
+    print(f"Saved calibration-size ablation to {output_path}")
 
 
 if __name__ == "__main__":

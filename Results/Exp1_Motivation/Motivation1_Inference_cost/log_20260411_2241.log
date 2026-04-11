@@ -1,0 +1,15 @@
+[setup] 配置加载自：Configs/default_env.yaml
+[setup] 运行设备：cpu
+[setup] 随机种子：42
+[setup] 数据集：imagenet，图片尺寸：224×224
+[setup] 数据来源：imagenet，类别数：1000
+[setup] 验证集批次数：782
+[setup] 模型：resnet50，残差块数：16，预训练：True
+[警告] 未检测到 CUDA 设备，峰值内存列将显示 -1（不可测）。
+[警告] 推理延迟对比在 CPU 上仍然有效，但效果不如 GPU 显著。
+
+
+[Exp1-Memory] 模型：resnet50，共 16 个残差块
+[Exp1-Memory] 延迟测量：预热 5 次，正式 20 次
+[Exp1-Memory] 结果将写入：Results/Exp1_Motivation/Motivation1_Inference_cost/memory_cost.csv
+
