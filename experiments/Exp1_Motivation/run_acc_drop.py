@@ -1,18 +1,4 @@
-"""Exp1 动机实验：逐步删除残差块，记录精度下降趋势。
-
-典型运行命令（ImageNet + GPU）：
-
-    python experiments/Exp1_Motivation/run_acc_drop.py \
-        --model resnet50 \
-        --dataset imagenet \
-        --device cuda:0 \
-        --batch-size 128 \
-        --num-workers 8 \
-        --pretrained
-
-调试时可以加 --max-batches 20 --val-size 1000 快速验证流程是否正确，
-确认无误后再去掉这两个参数跑完整实验。
-"""
+"""Exp1 动机实验：逐步删除残差块，记录精度下降趋势"""
 from __future__ import annotations
 
 import argparse
