@@ -1,7 +1,20 @@
-"""Compensator operators used by the patching pipeline."""
+"""所有补偿器的具体实现方法
+
+使用方法：
+    from models.compensators import build_compensator, freeze_backbone_except_compensators
+
+    # 构建补偿器
+    comp = build_compensator("lora", channels=512, rank=16, activation="gelu")
+    comp = build_compensator("affine", channels=256)
+    comp = build_compensator("identity", channels=0)  # identity 不需要 channels
+
+    # 冻结主干微调
+    from models.compensators import trainable_compensator_parameters
+    freeze_backbone_except_compensators(model)
+    optimizer = torch.optim.Adam(trainable_compensator_parameters(model), lr=1e-3)
+"""
 
 from __future__ import annotations
-
 import torch
 from torch import nn
 
@@ -83,22 +96,22 @@ class LoRACompensator(BaseCompensator):
         return self.up(self.down(x))
 
 
-class AdapterCompensator(BaseCompensator):
-    """Nonlinear upper-bound compensator."""
+# class AdapterCompensator(BaseCompensator):
+#     """Nonlinear upper-bound compensator."""
 
-    def __init__(self, channels: int, rank: int = 16, activation: str = "gelu") -> None:
-        super().__init__()
-        rank = max(1, min(rank, channels))
-        self.down = nn.Conv2d(channels, rank, kernel_size=1, bias=True)
-        self.up = nn.Conv2d(rank, channels, kernel_size=1, bias=True)
-        self.act = _build_activation(activation)
-        nn.init.kaiming_uniform_(self.down.weight, a=5**0.5)
-        nn.init.zeros_(self.down.bias)
-        nn.init.kaiming_uniform_(self.up.weight, a=5**0.5)
-        nn.init.zeros_(self.up.bias)
+#     def __init__(self, channels: int, rank: int = 16, activation: str = "gelu") -> None:
+#         super().__init__()
+#         rank = max(1, min(rank, channels))
+#         self.down = nn.Conv2d(channels, rank, kernel_size=1, bias=True)
+#         self.up = nn.Conv2d(rank, channels, kernel_size=1, bias=True)
+#         self.act = _build_activation(activation)
+#         nn.init.kaiming_uniform_(self.down.weight, a=5**0.5)
+#         nn.init.zeros_(self.down.bias)
+#         nn.init.kaiming_uniform_(self.up.weight, a=5**0.5)
+#         nn.init.zeros_(self.up.bias)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.up(self.act(self.down(x)))
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         return self.up(self.act(self.down(x)))
 
 
 LowRankCompensator = LoRACompensator
@@ -134,8 +147,8 @@ def build_compensator(
         return Linear1x1Compensator(channels=channels, rank=rank, activation=activation)
     if key in {"low_rank", "lora"}:
         return LoRACompensator(channels=channels, rank=rank, activation=activation)
-    if key == "adapter":
-        return AdapterCompensator(channels=channels, rank=rank, activation=activation)
+    # if key == "adapter":
+    #     return AdapterCompensator(channels=channels, rank=rank, activation=activation)
     raise ValueError(f"Unsupported compensator: {name}")
 
 

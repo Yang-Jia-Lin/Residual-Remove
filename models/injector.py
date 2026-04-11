@@ -1,4 +1,49 @@
-"""Patch official models with compensator-aware wrappers."""
+"""把官方模型中匹配的 block 替换成 PatchedBlock，返回 InjectedModel
+
+使用方法：
+    from models.injector import inject, resnet_block_specs, mobilenet_block_specs
+    from models.origin.resnet import build_resnet
+
+    # 原始网络
+    resnet_backbone = build_resnet(depth=50, pretrained=True)
+
+    # 注入网络
+    resnet_identity = inject(resnet_backbone, resnet_block_specs, compensator_name="identity", rank=16, activation="gelu")
+    resnet_lora = inject(resnet_backbone, resnet_block_specs, compensator_name="lora", rank=16, activation="gelu")
+
+    # 其他接口
+    model = inject(backbone, resnet_block_specs, "identity", 16, "gelu")
+
+    # 查看所有可控的 block 名称
+    names = model.get_block_names()
+    # → ['layer1.0', 'layer1.1', 'layer2.0', ..., 'layer4.2']
+
+    # 查看所有合法的切分点（用于 Exp3 系统实验）
+    points = model.get_split_points()
+    # → ['stem', 'layer1.0', ..., 'layer4.2']
+
+    # 正常推理（full mode，等价于原始网络）
+    logits = model(x)
+
+    # 删除所有残差（动机实验核心操作）
+    logits = model(x, mode="plain")
+
+    # 只删除指定 block 的残差（局部消融实验）
+    logits = model(x, mode="plain", removed_blocks=["layer3.5", "layer4.0", "layer4.1", "layer4.2"])
+
+    # 获取中间特征和残差统计（用于 run_residual_stats.py）
+    result = model(x, mode="full", return_residual_stats=True)
+    # result["residual_stats"]["layer2.3"] → {"plain": Tensor, "identity": Tensor, "output": Tensor}
+
+    # 端边协同切分推理（用于 Exp3）
+    feat = model.forward_to_split(x, split_point="layer2.3")    # 端侧计算到切分点
+    logits = model.forward_from_split(feat, split_point="layer2.3")  # 云侧从切分点续算
+
+    # 冻结主干，进入补偿器微调阶段
+    model.freeze_backbone()
+    optimizer = torch.optim.Adam(model.compensator_parameters(), lr=1e-3)
+
+"""
 
 from __future__ import annotations
 

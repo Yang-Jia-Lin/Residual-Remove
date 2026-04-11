@@ -1,12 +1,17 @@
-"""Unified model builder for official backbones plus compensator injection."""
+"""加载原始模型并注入补偿器（所有脚本的入口）
+    from models.builder import build_model, get_block_names
+    model1 = build_model("resnet50", num_classes=1000, pretrained=True)
+    model2 = build_model("resnet50", pretrained=True, compensator_name="lora", compensator_rank=16)
+    model3 = build_model("resnet50", pretrained=True, compensator_name="affine")
+    model4 = build_model("mobilenet_v2", num_classes=1000, pretrained=True, compensator_name="lora")
+    model5 = build_model("resnet18", num_classes=100, pretrained=False)
+    names = get_block_names(model5)
+"""
 
 from __future__ import annotations
-
 import copy
 from typing import Any
-
 from torch import nn
-
 from .injector import inject, mobilenet_block_specs, resnet_block_specs
 from .origin.mobilenet import build_mobilenet_v2
 from .origin.resnet import build_resnet

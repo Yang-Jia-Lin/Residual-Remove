@@ -1,10 +1,23 @@
-"""Official-style ResNet definitions and builders."""
+"""
+官方 ResNet 系列模型
+
+使用方法：
+    from models.origin.resnet import build_resnet
+    
+    # 从零初始化，自己训练
+    model = build_resnet(depth=50, num_classes=1000, pretrained=False)
+    
+    # 加载 ImageNet 预训练权重
+    model = build_resnet(depth=50, num_classes=1000, pretrained=True)
+
+    # 迁移到 CIFAR-100
+    model = build_resnet(depth=18, num_classes=100, pretrained=True)
+"""
 
 from __future__ import annotations
-
 from typing import Any
-
 from torch import nn
+
 from torchvision.models import (
     ResNet18_Weights,
     ResNet34_Weights,
