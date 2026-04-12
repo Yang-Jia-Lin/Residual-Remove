@@ -4,8 +4,6 @@
 参数解析、配置加载、模型构建、数据集准备这四件事，
 避免每个脚本重复写同样的样板代码。
 """
-from __future__ import annotations
-
 import argparse
 import random
 from pathlib import Path
@@ -200,3 +198,34 @@ def get_probe_batch(
         labels = labels[:batch_size]
 
     return images.to(device), labels.to(device)
+
+
+def resolve_removed_blocks(removed_blocks_arg: str, all_block_names: list[str]) -> list[str]:
+    """解析命令行传入的 removed_blocks 参数，转换为实际要删除的块名称列表。
+    
+    Args:
+        removed_blocks_arg: 命令行传入的字符串参数（如 'all', 'none', 或 'layer1.0,layer2.1'）
+        all_block_names: 模型中所有的残差块名称列表
+        
+    Returns:
+        list[str]: 实际要删除的残差块名称列表
+    """
+    if not removed_blocks_arg or removed_blocks_arg.lower() == "none":
+        return []
+        
+    # 如果指定了 'all'，直接返回模型所有的残差块
+    if removed_blocks_arg.lower() == "all":
+        return list(all_block_names)
+        
+    # 处理以逗号分隔的特定块名
+    selected_blocks = [b.strip() for b in removed_blocks_arg.split(",") if b.strip()]
+    
+    # 严格校验：确保输入的块名确实存在于当前模型中，避免拼写错误导致跑了很久才报错
+    invalid_blocks = [b for b in selected_blocks if b not in all_block_names]
+    if invalid_blocks:
+        raise ValueError(
+            f"错误：指定的残差块不存在于模型中 -> {invalid_blocks}\n"
+            f"当前模型支持的块包含: {all_block_names}"
+        )
+        
+    return selected_blocks

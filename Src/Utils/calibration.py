@@ -1,11 +1,10 @@
-from __future__ import annotations
-
 import random
-
 from torch.utils.data import DataLoader, Dataset, Subset
-
+from collections.abc import Sized
 
 def sample_calibration_subset(dataset: Dataset, calib_size: int, seed: int = 42) -> Dataset:
+    if not isinstance(dataset, Sized):
+        raise TypeError("dataset must implement __len__")
     if calib_size <= 0 or calib_size >= len(dataset):
         return dataset
     rng = random.Random(seed)

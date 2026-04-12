@@ -21,6 +21,8 @@ class DatasetBundle:
     """make_dataloaders() 的返回值，供实验脚本直接使用。"""
     train_loader: DataLoader
     val_loader:   DataLoader
+    train_dataset: Dataset       # <--- 新增
+    val_dataset:   Dataset
     num_classes:  int
     input_size:   int
     source:       str   # "cifar10" | "cifar100" | "imagenet" | "synthetic"
@@ -181,6 +183,8 @@ def make_dataloaders(
     return DatasetBundle(
         train_loader=train_loader,
         val_loader=val_loader,
+        train_dataset=train_ds, 
+        val_dataset=val_ds,      
         num_classes=num_classes,
         input_size=image_size,
         source=source,
