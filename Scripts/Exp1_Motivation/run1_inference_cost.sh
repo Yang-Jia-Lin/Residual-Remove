@@ -4,7 +4,7 @@ python -m Scripts.Exp1_Motivation.run1_inference_cost \
     --model resnet50 \
     --dataset imagenet \
     --device cuda:0 \
-    --batch-size 16 \
+    --batch-size 64 \
     --num-workers 4 \
     --pretrained
 

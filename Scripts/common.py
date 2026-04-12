@@ -106,7 +106,7 @@ def build_setup(
     compensator_rank: int = 16,
 ) -> dict[str, Any]:
     """根据命令行参数和 yaml 配置，完成模型、数据集、设备的初始化。
-    
+
     优先级：命令行参数 > yaml 配置文件 > 函数内硬编码默认值。
     
     返回一个包含以下 key 的字典：
@@ -120,7 +120,7 @@ def build_setup(
     if not cfg_path.exists():
         raise FileNotFoundError(f"找不到配置文件：{cfg_path}")
     cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
-    print(f"[setup] 配置加载自：{cfg_path}")
+    
 
     # ── 解析设备（命令行优先） ───────────────────────────────────────────
     device_str = args.device or cfg.get("device", "cpu")
@@ -129,13 +129,12 @@ def build_setup(
         print(f"[setup] ⚠ 指定了 {device_str} 但 CUDA 不可用，自动降级到 cpu")
         device_str = "cpu"
     device = torch.device(device_str)
-    print(f"[setup] 运行设备：{device}")
 
     # ── 设置随机种子 ────────────────────────────────────────────────────
     seed = args.seed if args.seed is not None else cfg.get("seed", 42)
     torch.manual_seed(seed)
     random.seed(seed)
-    print(f"[setup] 随机种子：{seed}")
+    # print(f"[setup] 随机种子：{seed}")
 
     # ── 解析数据集参数 ──────────────────────────────────────────────────
     dataset_name = args.dataset or cfg["data"]["default_dataset"]
@@ -148,8 +147,7 @@ def build_setup(
         or _DEFAULT_IMAGE_SIZE.get(dataset_name.lower())
         or cfg["data"].get("default_image_size", 32)
     )
-    print(f"[setup] 数据集：{dataset_name}，图片尺寸：{image_size}×{image_size}")
-
+    
     # ── 构建数据集 ──────────────────────────────────────────────────────
     bundle = make_dataloaders(
         dataset_name         = dataset_name,
@@ -161,8 +159,6 @@ def build_setup(
         val_size             = args.val_size,   # None 表示使用完整验证集
         seed                 = seed,
     )
-    print(f"[setup] 数据来源：{bundle.source}，类别数：{bundle.num_classes}")
-    print(f"[setup] 验证集批次数：{len(bundle.val_loader)}")
 
     # ── 构建模型 ────────────────────────────────────────────────────────
     model = build_model(
@@ -173,8 +169,12 @@ def build_setup(
         compensator_rank = compensator_rank,
     ).to(device)
     model.eval()
-
     n_blocks = len(model.get_block_names())
+
+    print(f"配置加载自：{cfg_path}")
+    print(f"[setup] 运行设备：{device}")
+    print(f"[setup] 数据集：{dataset_name}，图片尺寸：{image_size}×{image_size}，类别数：{bundle.num_classes}")
+    print(f"[setup] batch_size：{args.batch_size}，验证集批次数：{len(bundle.val_loader)}，num_workers：{num_workers}") 
     print(f"[setup] 模型：{args.model}，残差块数：{n_blocks}，预训练：{args.pretrained}")
 
     return {"model": model, "bundle": bundle, "device": device, "cfg": cfg}

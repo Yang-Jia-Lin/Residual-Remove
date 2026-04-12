@@ -1,16 +1,7 @@
-"""Exp1 动机实验：逐步删除残差块，记录精度下降趋势"""
-from __future__ import annotations
-
+"""动机实验3：逐步删除残差块的精度下降趋势"""
 import argparse
-import sys
 from pathlib import Path
 from datetime import datetime
-
-ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-import yaml
 from Scripts.common import add_common_args, build_setup
 from Src.Models_Training.trainer import evaluate_model
 from Src.Utils.runtime import write_csv
@@ -18,12 +9,13 @@ from Src.Utils.runtime import write_csv
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="逐步删除残差块，记录 Top-1/Top-5 精度的下降趋势（动机实验 Exp1）。"
+        description="逐步删除残差块时模型 Top-1/Top-5 精度的下降趋势"
     )
     add_common_args(parser)
     parser.add_argument(
-        "--output", default=None,
-        help="输出 CSV 的路径。不指定则自动写到 yaml result_root 下。"
+        "--output", 
+        default=None,
+        help="输出 CSV 的路径（默认 Results/Exp1_Motivation/Motivation3_Acc_drop/time_acc_drop.csv）"
     )
     return parser
 

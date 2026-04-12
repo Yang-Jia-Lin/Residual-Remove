@@ -1,42 +1,20 @@
-"""Exp1 动机实验：资源受限环境下删除残差的综合收益分析。
-
-在内存受限的边缘设备上，删除残差带来两种协同收益：
-
-  (1) 峰值内存下降：
+"""动机实验1：删除残差的综合收益分析
+  (1) 理论 FLOPS 不变
+  (2) 实际推理峰值内存下降：
       full mode 在执行 out = F(x) + x 时，内存中同时存在 F(x)、x、out 三个张量。
-      plain mode 不保留 x，峰值内存更低，意味着相同显存可以支持更大的 batch，
-      或者同时运行更多的推理实例（多租户场景）。
-
-  (2) 推理时延下降：
-      在内存带宽受限的设备上（Jetson Nano、移动 NPU 等），搬运数据的代价
-      远大于计算本身。删除残差减少了内存读写次数，推理速度因此提升。
-      即使在开发机上，这个效应在 batch 较大时也可以观测到。
-
-这个脚本采用和 run_acc_drop.py 完全一致的逐步删除策略，
-同时测量每个删除阶段的峰值内存和推理延迟，让精度、内存、延迟三条曲线
-可以在同一个 X 轴（removed_count）上对齐比较。
-
-典型运行命令（GPU，batch 建议 32 以上以放大效果）：
-    python experiments/Exp1_Motivation/run_memory_cost.py \\
-        --model resnet50 --dataset imagenet \\
-        --device cuda:0 --batch-size 32 \\
-        --num-workers 4 --pretrained
-
-CPU 上也可运行，但峰值内存列会显示 -1（不可测），延迟对比仍然有效。
+      plain mode 不保留 x，峰值内存更低，相同显存可以支持更大的 batch 或者同时运行更多的推理实例
+  (3) 实际推理时延下降：
+      在内存带宽受限的设备上，搬运数据的代价远大于计算本身。
+      删除残差减少了内存读写次数，推理速度因此提升
+  (4) 精度下降
+  
+记录在同样的模型、硬件、数据下，逐阶段删除残差后的 精度、FLOPS、内存、延迟 变化
 """
-from __future__ import annotations
-
 import argparse
-import sys
 import time
+import torch
 from pathlib import Path
 from datetime import datetime
-
-ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-import torch
 
 from Scripts.common import add_common_args, build_setup
 from Src.Utils.runtime import write_csv
@@ -44,14 +22,22 @@ from Src.Utils.runtime import write_csv
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="量化删除残差在资源受限环境下的综合收益：峰值内存 + 推理延迟（Exp1）。"
+        description="量化删除残差后的综合收益：峰值内存 + 推理延迟"
     )
     add_common_args(parser)
-    parser.add_argument("--output", default=None,
-        help="输出 CSV 路径。不指定则写到 result_root/motivation/memory_cost.csv")
-    parser.add_argument("--latency-reps", type=int, default=20,
+    parser.add_argument(
+        "--output", 
+        default=None,
+        help="输出 CSV 路径（默认 Results/Exp1_Motivation/Motivation1_Inference_cost/time_memory_cost.csv）")
+    parser.add_argument(
+        "--latency-reps", 
+        type=int, 
+        default=20,
         help="延迟测量的重复次数，取均值（默认 20）")
-    parser.add_argument("--latency-warmup", type=int, default=5,
+    parser.add_argument(
+        "--latency-warmup", 
+        type=int, 
+        default=5,
         help="延迟测量的预热次数，预热结果不计入统计（默认 5）")
     return parser
 
@@ -65,14 +51,10 @@ def _measure_one(
     latency_reps: int,
     latency_warmup: int,
 ) -> tuple[float, float]:
-    """对一种配置，同时测量峰值内存和推理延迟，返回 (peak_mb, mean_latency_ms)。
-
-    把两者放在同一个函数里是为了确保测量条件完全一致——
-    相同的 batch、相同的设备状态、相同的 mode，结果才有可比性。
-
-    返回值说明：
+    """对一种配置，同时测量峰值内存和推理延迟，返回 (peak_mb, mean_latency_ms)
+    返回：
         peak_mb：GPU 显存峰值（MB）；CPU 上返回 -1.0 表示无法测量。
-        mean_latency_ms：多次推理的平均延迟（毫秒）。
+        mean_latency_ms：多次推理的平均延迟（毫秒）
     """
     model.eval()
 
@@ -142,15 +124,15 @@ def main() -> None:
         print("[警告] 未检测到 CUDA 设备，峰值内存列将显示 -1（不可测）。")
         print("[警告] 推理延迟对比在 CPU 上仍然有效，但效果不如 GPU 显著。\n")
 
-    print(f"\n[Exp1-Memory] 模型：{args.model}，共 {len(blocks)} 个残差块")
-    print(f"[Exp1-Memory] 延迟测量：预热 {args.latency_warmup} 次，正式 {args.latency_reps} 次")
-    print(f"[Exp1-Memory] 结果将写入：{output_path}\n")
+    # print(f"\n[Exp1-InferenceCost] 模型：{args.model}，共 {len(blocks)} 个残差块")
+    print(f"[Exp1-InferenceCost] 延迟测量：预热 {args.latency_warmup} 次，正式 {args.latency_reps} 次")
+    # print(f"[Exp1-InferenceCost] 结果将写入：{output_path}\n")
 
     # 取第一个 batch 作为固定测量输入，整个实验使用同一批数据，
     # 这样排除了输入差异对延迟的影响，确保各组对比条件完全一致
     measure_images, _ = next(iter(bundle.val_loader))
     measure_images = measure_images.to(device)
-    print(f"[Exp1-Memory] 测量 batch：{measure_images.shape}（固定，保证对比公平）\n")
+    print(f"[Exp1-InferenceCost] 测量 batch：{measure_images.shape}（固定，保证公平）\n")
 
     rows: list[dict] = []
 
@@ -235,12 +217,12 @@ def main() -> None:
         })
 
     saved = write_csv(output_path, rows)
-    print(f"\n[Exp1-Memory] 完成。结果已保存至：{saved}")
+    print(f"\n[Exp1-InferenceCost] 完成。结果已保存至：{saved}")
 
     # 打印一个简洁的摘要，方便快速判断实验是否得到了预期结果
     if len(rows) > 1:
         last = rows[-1]
-        print(f"\n[Exp1-Memory] ── 删除全部残差块时的综合收益摘要 ──")
+        print(f"\n[Exp1-InferenceCost] ── 删除全部残差块时的综合收益摘要 ──")
         if last["peak_mb"] >= 0:
             print(f"  峰值显存：{rows[0]['peak_mb']:.2f} MB → {last['peak_mb']:.2f} MB"
                   f"（节省 {last['saved_memory_pct']:.1f}%）")

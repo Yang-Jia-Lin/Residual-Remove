@@ -1,32 +1,14 @@
-"""Exp1 动机实验：量化残差连接在切分点处的完整系统传输开销。
-
-把传输开销分解为一条完整的流水线：
-  数据量 → 序列化时间 → 网络传输时间 → 总系统时间
-
-对于每个残差块，在每种带宽场景下，同时输出 DAG 和链式拓扑的对比数字，
-让审稿人一眼看出在完整端边传输流程里，删除残差分支能带来多大的系统收益。
-
-典型运行命令：
-    python experiments/Exp1_Motivation/run_system_cost.py \\
-        --model resnet50 --dataset imagenet \\
-        --device cuda:0 --batch-size 1 \\
-        --num-workers 4 --pretrained
+"""动机实验2：删除残差在模型切分时的收益分析
+   端边云协同模型切分时，传输开销包含：数据量 → 序列化时间 → 网络传输时间 → 总系统时间
 """
-from __future__ import annotations
-
 import argparse
 import io
 import sys
 import time
-from pathlib import Path
-from datetime import datetime
-
-ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
 import torch
 import yaml
+from pathlib import Path
+from datetime import datetime
 
 from Scripts.common import add_common_args, build_setup, get_probe_batch
 from Src.Collab_System.bandwidth_sim import estimate_transfer_time_ms, saved_transfer_ratio
@@ -35,13 +17,22 @@ from Src.Utils.runtime import tensor_bytes, write_csv
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="量化残差连接在完整传输流水线中的开销（Exp1 系统部分）。"
+        description="量化删除残差在模型切分时的收益"
     )
     add_common_args(parser)
-    parser.add_argument("--system-config", default="Configs/system.yaml")
-    parser.add_argument("--output", default=None,
-        help="输出 CSV 路径。不指定则写到 result_root/Exp1_Motivation/Motivation2_Collaborate_cost/system_cost.csv")
-    parser.add_argument("--serialize-reps", type=int, default=20,
+    parser.add_argument(
+        "--system-config", 
+        default="Configs/system.yaml",
+        help="端边云协同系统配置 YAML 文件路径，包含带宽和协议开销等参数（默认 Configs/system.yaml）"
+    )
+    parser.add_argument(
+        "--output", 
+        default=None,
+        help="输出 CSV 路径（默认 Results/Exp1_Motivation/Motivation2_Collaborate_cost/time_system_cost.csv）")
+    parser.add_argument(
+        "--serialize-reps", 
+        type=int, 
+        default=20,
         help="序列化耗时的重复测量次数，取均值以减少抖动（默认 20）")
     return parser
 
@@ -85,27 +76,27 @@ def main() -> None:
         or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation2_Collaborate_cost" / f"{current_time}_system_cost.csv"
     )
 
-    print(f"\n[Exp1-System] 模型：{args.model}")
-    print(f"[Exp1-System] 带宽场景：{bandwidth_list} Mbps")
-    print(f"[Exp1-System] 协议固定开销：{protocol_overhead_ms} ms")
-    print(f"[Exp1-System] 序列化重复次数：{args.serialize_reps}")
-    print(f"[Exp1-System] 结果将写入：{output_path}\n")
+    print(f"\n[Exp1-Collaborate] 模型：{args.model}")
+    print(f"[Exp1-Collaborate] 带宽场景：{bandwidth_list} Mbps")
+    print(f"[Exp1-Collaborate] 协议固定开销：{protocol_overhead_ms} ms")
+    print(f"[Exp1-Collaborate] 序列化重复次数：{args.serialize_reps}")
+    print(f"[Exp1-Collaborate] 结果将写入：{output_path}\n")
 
     # batch_size=1：关心单张图片的张量大小，不需要 batch 维度的统计意义
     images, _ = get_probe_batch(bundle, device, batch_size=1)
 
-    print("[Exp1-System] 运行 full mode 前向，收集中间张量...")
+    print("[Exp1-Collaborate] 运行 full mode 前向，收集中间张量...")
     model.eval()
     with torch.no_grad():
         output = model(images, mode="full", return_residual_stats=True)
 
     residual_stats = output["residual_stats"]
     blocks = list(residual_stats.keys())
-    print(f"[Exp1-System] 采集到 {len(blocks)} 个残差块\n")
+    print(f"[Exp1-Collaborate] 采集到 {len(blocks)} 个残差块\n")
 
     # ── 第一步：对每个 block，先把序列化耗时测好（和带宽无关，只测一次）──────
     # 这一步放在外层循环外面，避免每种带宽场景都重复测序列化时间
-    print("[Exp1-System] 正在测量序列化耗时（每个块需要约数秒）...")
+    print("[Exp1-Collaborate] 正在测量序列化耗时（每个块需要约数秒）...")
     serialize_cache: dict[str, tuple[float, float]] = {}
 
     for block_name, stats in residual_stats.items():
@@ -126,7 +117,7 @@ def main() -> None:
         )
 
     # ── 第二步：组合所有维度，每行是 (block × bandwidth) ───────────────────────
-    print(f"\n[Exp1-System] 组合数据量 + 序列化 + 传输延迟 + 总系统时间...\n")
+    print(f"\n[Exp1-Collaborate] 组合数据量 + 序列化 + 传输延迟 + 总系统时间...\n")
 
     rows: list[dict] = []
 
@@ -184,9 +175,9 @@ def main() -> None:
             })
 
     saved = write_csv(output_path, rows)
-    print(f"[Exp1-System] 完成。结果已保存至：{saved}")
+    print(f"[Exp1-Collaborate] 完成。结果已保存至：{saved}")
     print(
-        f"[Exp1-System] 共 {len(rows)} 行"
+        f"[Exp1-Collaborate] 共 {len(rows)} 行"
         f" = {len(blocks)} 块 × {len(bandwidth_list)} 种带宽场景"
     )
 

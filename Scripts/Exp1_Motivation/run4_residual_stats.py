@@ -1,37 +1,23 @@
-"""Exp1 动机实验：统计残差分支的 L2-norm 比值与余弦相似度。
+"""动机实验4：残差分支 F(x) 和identity分支 x 的 L2-norm 比值与余弦相似度。
 
-核心论点：identity 分支（即 x）不是可以忽略的噪声，而是有结构的信号。
-用两个统计量来支撑这个论点：
-
+  论点：identity 分支（即 x）是结构的信号，不是可以忽略的噪声，证明"为什么不能直接删残差"
   (1) L2-norm 比值 = ‖F(x)‖ / ‖x‖
-      如果比值接近 1，说明残差分支的幅度和主路输出相当，不可忽略。
-      如果比值远大于 1，说明主路输出主导，残差相对较小。
-      论文里期望看到的是：比值在合理范围内（不是极大值），
-      证明 x 的量级是有实质意义的。
+      如果 比值接近 1，残差分支的幅度和主路输出相当，不可忽略
+      如果 比值远大于 1，主路输出主导，残差相对较小
+      期望：比值合理（不是极大值），证明 x 的量级是有实质意义的
 
   (2) 余弦相似度 = cosine(F(x), x)
-      如果余弦相似度接近 0，说明两者方向正交，x 携带了 F(x) 没有的信息。
-      如果接近 1，说明 x 和 F(x) 高度相关，残差几乎是冗余的。
-      论文里期望看到的是：余弦相似度不接近 1（即 x 携带独立信息），
-      证明直接扔掉 x 会丢失有意义的方向信息。
-
-这两个指标共同构成了"为什么不能直接删残差"的定量论据。
+      如果 接近 0，说明两者方向正交，x 携带了 F(x) 没有的信息
+      如果 接近 1，说明 x 和 F(x) 高度相关，残差几乎是冗余的
+      期望：余弦相似度不接近 1（即 x 携带独立信息），证明直接扔掉 x 会丢失有意义的方向信息
 """
-from __future__ import annotations
-
 import argparse
 import math
-import sys
+import torch
+import torch.nn.functional as F
 from collections import defaultdict
 from pathlib import Path
 from datetime import datetime
-
-ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-import torch
-import torch.nn.functional as F
 
 from Scripts.common import add_common_args, build_setup
 from Src.Utils.runtime import write_csv
@@ -39,12 +25,13 @@ from Src.Utils.runtime import write_csv
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="统计每个残差块的 L2-norm 比值与余弦相似度（动机实验 Exp1）。"
+        description="每个残差块的 L2-norm 比值与余弦相似度（为什么不能直接删残差）"
     )
     add_common_args(parser)
     parser.add_argument(
-        "--output", default=None,
-        help="输出 CSV 的路径。不指定则自动写到 result_root/Exp1_Motivation/Motivation4_Residual_Stats/residual_stats.csv"
+        "--output", 
+        default=None,
+        help="输出 CSV 的路径（默认 Results/Exp1_Motivation/Motivation4_Residual_stats/time_residual_stats.csv）"
     )
     return parser
 
