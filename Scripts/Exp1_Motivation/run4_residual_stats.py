@@ -63,7 +63,7 @@ def main() -> None:
     current_time = datetime.now().strftime("%Y%m%d_%H%M")
     output_path = Path(
         args.output
-        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation4_Residual_Stats" / f"{current_time}_residual_stats.csv"
+        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation4_Residual_stats" / f"{current_time}_residual_stats.csv"
     )
 
     print(f"\n[Exp1-Stats] 开始残差统计实验")

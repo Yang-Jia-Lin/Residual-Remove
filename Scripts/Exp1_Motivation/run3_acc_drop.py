@@ -42,7 +42,7 @@ def main() -> None:
     current_time = datetime.now().strftime("%Y%m%d_%H%M")
     output_path = Path(
         args.output
-        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation3_Acc_Drop" / f"{current_time}_acc_drop.csv"
+        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation3_Acc_drop" / f"{current_time}_acc_drop.csv"
     )
 
     print(f"\n[Exp1] 开始精度下降实验")

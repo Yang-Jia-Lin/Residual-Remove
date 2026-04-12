@@ -3,7 +3,7 @@
 python -m Scripts.Exp1_Motivation.run2_collaborate_cost \
     --model resnet50 \
     --dataset imagenet \
-    --device cpu \
+    --device cuda:0 \
     --batch-size 1 \
     --num-workers 4 \
     --pretrained

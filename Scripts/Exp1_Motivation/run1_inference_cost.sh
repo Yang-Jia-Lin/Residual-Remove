@@ -3,7 +3,7 @@
 python -m Scripts.Exp1_Motivation.run1_inference_cost \
     --model resnet50 \
     --dataset imagenet \
-    --device cpu \
+    --device cuda:0 \
     --batch-size 16 \
     --num-workers 4 \
     --pretrained
