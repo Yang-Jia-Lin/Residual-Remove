@@ -11,6 +11,7 @@ GPU 延迟测量的三个关键点：
 from __future__ import annotations
 
 import time
+import statistics
 from dataclasses import dataclass
 from typing import Any
 
@@ -85,7 +86,6 @@ def measure_latency(
                 torch.cuda.synchronize(device)
             timings.append((time.perf_counter() - t0) * 1000.0)
 
-    import statistics
     return LatencyResult(
         mean_ms = sum(timings) / len(timings),
         min_ms  = min(timings),
@@ -96,35 +96,14 @@ def measure_latency(
 
 
 def compare_latency(
-    model: torch.nn.Module,
-    sample: torch.Tensor,
+    full_model:  torch.nn.Module,
+    plain_model: torch.nn.Module,
+    sample:      torch.Tensor,
     repetitions: int = 50,
-    warmup: int = 10,
-    removed_blocks: list[str] | None = None,
+    warmup:      int = 10,
+    **forward_kwargs: Any,
 ) -> LatencyComparison:
-    """对比 full 和 plain 两种 mode 下的推理延迟。
-
-    这是动机实验 Exp1 的核心函数：
-    plain mode 通过删除残差连接减少了内存访问，理论上应当更快。
-    这个函数量化这个加速比，为论文提供实验依据。
-
-    Args:
-        removed_blocks: 传 None 表示删除全部 block 的残差；
-                        也可以只指定部分 block，用于局部消融实验。
-    """
-    full_result = measure_latency(
-        model, sample, repetitions=repetitions, warmup=warmup, mode="full"
-    )
-    plain_result = measure_latency(
-        model, sample, repetitions=repetitions, warmup=warmup,
-        mode="plain", removed_blocks=removed_blocks,
-    )
-
-    # 加速比定义为 full / plain：plain 越快，加速比越大
+    full_result  = measure_latency(full_model,  sample, repetitions, warmup, **forward_kwargs)
+    plain_result = measure_latency(plain_model, sample, repetitions, warmup, **forward_kwargs)
     speedup = full_result.mean_ms / plain_result.mean_ms if plain_result.mean_ms > 0 else 1.0
-
-    return LatencyComparison(
-        full    = full_result,
-        plain   = plain_result,
-        speedup = speedup,
-    )
+    return LatencyComparison(full=full_result, plain=plain_result, speedup=speedup)

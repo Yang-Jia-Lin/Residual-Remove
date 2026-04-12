@@ -1,4 +1,4 @@
-"""所有补偿器的具体实现方法
+"""所有补偿器的具体实现
 
 使用方法：
     from models.compensators import build_compensator, freeze_backbone_except_compensators
@@ -96,22 +96,44 @@ class LoRACompensator(BaseCompensator):
         return self.up(self.down(x))
 
 
-# class AdapterCompensator(BaseCompensator):
-#     """Nonlinear upper-bound compensator."""
+class AdapterCompensator(BaseCompensator):
+    """非线性上界补偿器：y = W_2(σ(W_1(z)))
 
-#     def __init__(self, channels: int, rank: int = 16, activation: str = "gelu") -> None:
-#         super().__init__()
-#         rank = max(1, min(rank, channels))
-#         self.down = nn.Conv2d(channels, rank, kernel_size=1, bias=True)
-#         self.up = nn.Conv2d(rank, channels, kernel_size=1, bias=True)
-#         self.act = _build_activation(activation)
-#         nn.init.kaiming_uniform_(self.down.weight, a=5**0.5)
-#         nn.init.zeros_(self.down.bias)
-#         nn.init.kaiming_uniform_(self.up.weight, a=5**0.5)
-#         nn.init.zeros_(self.up.bias)
+    表达力最强的补偿方案，引入了非线性变换。
+    作为 Upper Bound 使用，用于衡量其他线性补偿器与理论上限的差距。
 
-#     def forward(self, x: torch.Tensor) -> torch.Tensor:
-#         return self.up(self.act(self.down(x)))
+    注意：由于引入了额外的非线性计算图，这个补偿器无法像 Linear1x1 那样
+    通过重参数化融入主干，部署时会有真实的计算开销（fusible=False）。
+    """
+
+    fusible = False
+
+    def __init__(self, channels: int, rank: int = 16, activation: str = "gelu") -> None:
+        super().__init__()
+        rank = max(1, min(rank, channels))
+
+        # W_1：降维投影，channels → rank
+        self.down = nn.Conv2d(channels, rank, kernel_size=1, bias=True)
+        # W_2：升维投影，rank → channels
+        self.up   = nn.Conv2d(rank, channels, kernel_size=1, bias=True)
+        self.act  = _build_activation(activation)
+
+        # 初始化策略：
+        # down 层用 kaiming 均匀初始化，bias 初始化为小值而非零，
+        # 避免 dead initialization（全零输出经过激活后梯度消失）
+        nn.init.kaiming_uniform_(self.down.weight, a=5 ** 0.5)
+        if self.down.bias is not None:
+            nn.init.uniform_(self.down.bias, -0.01, 0.01)
+
+        # up 层权重用 kaiming，bias 初始化为零，
+        # 让补偿器在训练初期输出接近零，不破坏预训练主干的初始分布
+        nn.init.kaiming_uniform_(self.up.weight, a=5 ** 0.5)
+        if self.up.bias is not None:
+            nn.init.zeros_(self.up.bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # y = W_2(σ(W_1(z)))
+        return self.up(self.act(self.down(x)))
 
 
 LowRankCompensator = LoRACompensator

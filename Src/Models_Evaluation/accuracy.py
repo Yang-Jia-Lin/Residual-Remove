@@ -1,12 +1,9 @@
 # src/evaluation/accuracy.py
-"""Top-K 准确率计算工具。
-
-约定：topk_accuracy 返回 0~100 的百分比，和 trainer.py 的累加逻辑一致。
+"""Top-K 准确率计算
+注意：topk_accuracy 返回 0~100 的百分比
 """
 from __future__ import annotations
-
 from collections.abc import Iterable
-
 import torch
 
 

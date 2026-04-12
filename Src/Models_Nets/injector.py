@@ -1,80 +1,33 @@
-"""把官方模型中匹配的 block 替换成 PatchedBlock，返回 InjectedModel
-
-使用方法：
-    from models.injector import inject, resnet_block_specs, mobilenet_block_specs
-    from models.origin.resnet import build_resnet
-
-    # 原始网络
-    resnet_backbone = build_resnet(depth=50, pretrained=True)
-
-    # 注入网络
-    resnet_identity = inject(resnet_backbone, resnet_block_specs, compensator_name="identity", rank=16, activation="gelu")
-    resnet_lora = inject(resnet_backbone, resnet_block_specs, compensator_name="lora", rank=16, activation="gelu")
-
-    # 其他接口
-    model = inject(backbone, resnet_block_specs, "identity", 16, "gelu")
-
-    # 查看所有可控的 block 名称
-    names = model.get_block_names()
-    # → ['layer1.0', 'layer1.1', 'layer2.0', ..., 'layer4.2']
-
-    # 查看所有合法的切分点（用于 Exp3 系统实验）
-    points = model.get_split_points()
-    # → ['stem', 'layer1.0', ..., 'layer4.2']
-
-    # 正常推理（full mode，等价于原始网络）
-    logits = model(x)
-
-    # 删除所有残差（动机实验核心操作）
-    logits = model(x, mode="plain")
-
-    # 只删除指定 block 的残差（局部消融实验）
-    logits = model(x, mode="plain", removed_blocks=["layer3.5", "layer4.0", "layer4.1", "layer4.2"])
-
-    # 获取中间特征和残差统计（用于 run_residual_stats.py）
-    result = model(x, mode="full", return_residual_stats=True)
-    # result["residual_stats"]["layer2.3"] → {"plain": Tensor, "identity": Tensor, "output": Tensor}
-
-    # 端边协同切分推理（用于 Exp3）
-    feat = model.forward_to_split(x, split_point="layer2.3")    # 端侧计算到切分点
-    logits = model.forward_from_split(feat, split_point="layer2.3")  # 云侧从切分点续算
-
-    # 冻结主干，进入补偿器微调阶段
-    model.freeze_backbone()
-    optimizer = torch.optim.Adam(model.compensator_parameters(), lr=1e-3)
-
-"""
+"""把官方模型中匹配的 block 替换成 PatchedBlock，返回 InjectedModel"""
 
 from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Any, Callable, Sequence
-
 import torch
 from torch import nn
 
-from .compensators import BaseCompensator, build_compensator, freeze_backbone_except_compensators, trainable_compensator_parameters
-from .origin.mobilenet import InvertedResidual
-from .origin.resnet import BasicBlock, Bottleneck
+from Src.Models_Nets.compensators import BaseCompensator, build_compensator, freeze_backbone_except_compensators, trainable_compensator_parameters
+from Src.Models_Nets.origin.mobilenet import InvertedResidual
+from Src.Models_Nets.origin.resnet import BasicBlock, Bottleneck
 
 
 @dataclass(frozen=True)
 class BlockSpec:
-    """Describe a block type and how to extract its compensator channel count."""
-
+    """模块类型：说明如何提取其补偿器通道数以及如何包装成 PatchedBlock"""
     block_class: type[nn.Module]
     get_channels: Callable[[nn.Module], int]
     wrap: Callable[[nn.Module, str, BaseCompensator], "PatchedBlock"]
 
 
 def _postprocess_output(original_block: nn.Module, tensor: torch.Tensor) -> torch.Tensor:
+    """对残差分支输出进行后处理(补充ReLU)，确保与原始块的输出一致。"""
     if isinstance(original_block, (BasicBlock, Bottleneck)):
         return original_block.relu(tensor)
     return tensor
 
 
 def _split_forward(original_block: nn.Module, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-    """Return the pre-add residual branch output and the identity branch output."""
+    """返回加法前的残差分支输出和恒等分支输出 F(x, W)"""
 
     if isinstance(original_block, BasicBlock):
         identity = x
@@ -117,7 +70,7 @@ class _ExecutionPlan:
 
 
 class PatchedBlock(nn.Module):
-    """Generic wrapper around a patched block and its compensator."""
+    """封装已打补丁的块及其补偿器的通用封装类"""
 
     def __init__(
         self,
@@ -195,7 +148,7 @@ def _build_execution_plan(model: nn.Module, block_order: list[str]) -> _Executio
 
 
 class InjectedModel(nn.Module):
-    """Wrapper around a patched official backbone."""
+    """提供前向传播方法，允许在不同模式下运行块，并选择性地返回特征和残差统计数据"""
 
     def __init__(self, backbone: nn.Module, block_order: list[str]) -> None:
         super().__init__()
