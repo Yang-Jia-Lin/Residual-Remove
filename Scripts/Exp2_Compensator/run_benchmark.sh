@@ -6,6 +6,7 @@ python -m Scripts.Exp2_Compensator.run_benchmark \
     --device cpu \
     --batch-size 64 \
     --num-workers 4 \
-    --pretrained \
     --calib-size 1024 \
-    --epochs 3
+    --epochs 3 \
+    --removed-blocks "layer4.2" \
+    --pretrained \

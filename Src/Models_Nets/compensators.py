@@ -169,8 +169,8 @@ def build_compensator(
         return Linear1x1Compensator(channels=channels, rank=rank, activation=activation)
     if key in {"low_rank", "lora"}:
         return LoRACompensator(channels=channels, rank=rank, activation=activation)
-    # if key == "adapter":
-    #     return AdapterCompensator(channels=channels, rank=rank, activation=activation)
+    if key == "adapter":
+        return AdapterCompensator(channels=channels, rank=rank, activation=activation)
     raise ValueError(f"Unsupported compensator: {name}")
 
 
