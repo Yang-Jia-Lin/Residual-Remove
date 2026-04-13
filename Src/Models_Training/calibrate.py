@@ -15,7 +15,7 @@ def calibrate_compensators(
     lr: float = 1e-3,
     weight_decay: float = 0.0,
     feature_loss_weight: float = 1.0,
-    logit_loss_weight: float = 0.1,
+    logit_loss_weight: float = 1.0,
     grad_clip: float | None = 1.0,
     max_batches: int | None = None,
 ) -> dict[str, list[float]]:

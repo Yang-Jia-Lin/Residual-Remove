@@ -7,9 +7,9 @@ python -m Scripts.Exp2_Compensator.run_benchmark \
     --device cuda:0 \
     --batch-size 64 \
     --num-workers 4 \
-    --calib-size 1024 \
-    --epochs 5 \
-    --removed-blocks "layer4.2" \
+    --calib-size 4096 \
+    --epochs 10 \
+    --removed-blocks "layer1.0" \
     --pretrained
 
 # 快速测试，减少校准图像数量和轮数，限制最大批次数，确保在合理时间内完成
