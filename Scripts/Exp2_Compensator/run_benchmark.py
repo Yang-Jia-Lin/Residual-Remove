@@ -12,12 +12,15 @@
   low_rank_r{4,8,16,32}   : W₂W₁z，不同秩
   adapter                  : W₂σ(W₁z)，non-linear upper bound
 """
+from __future__ import annotations
+
 import argparse
 import logging
 import sys
-import torch
 from datetime import datetime
 from pathlib import Path
+
+import torch
 
 from Scripts.common import add_common_args, build_setup, resolve_removed_blocks
 from Src.Models_Evaluation.flops import count_parameters, estimate_macs
@@ -45,6 +48,12 @@ VARIANTS: list[tuple[str, str, int]] = [
 ]
 
 OUTPUT_ROOT = Path("Results/Exp2_Compensator")
+
+# linear1x1 参数量是其他方法的 ~80 倍（2048×2048），
+# 用默认 lr=1e-3 步子太大会直接训飞，单独指定小 lr
+VARIANT_LR: dict[str, float] = {
+    "linear1x1": 1e-4,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -263,14 +272,18 @@ def main() -> None:
         model = setup["model"]
 
         # 校准：冻结主干，只更新补偿器参数
-        logger.info(f"    校准中（{args.epochs} epochs, calib_size={args.calib_size}）...")
+        # linear1x1 参数量大，单独用小 lr 防止训飞
+        effective_lr = VARIANT_LR.get(display_name, args.lr)
+        if effective_lr is None:
+            effective_lr = 1e-3  # fallback default
+        logger.info(f"    校准中（{args.epochs} epochs, calib_size={args.calib_size}, lr={effective_lr}）...")
         history = calibrate_compensators(
             model,
             calibration_loader=calib_loader,
             device=device,
             removed_blocks=removed_blocks,
             epochs=args.epochs,
-            lr=args.lr,
+            lr=effective_lr,
             max_batches=getattr(args, "max_batches", None),
         )
         final_loss = history["epoch_loss"][-1]
