@@ -37,10 +37,10 @@ from Src.Utils.runtime import write_csv
 # rank=0 的条目不使用 rank 参数（scalar / affine / linear1x1 内部不需要）
 # ---------------------------------------------------------------------------
 VARIANTS: list[tuple[str, str, int]] = [
-    ("scalar",        "scalar",    0),
-    ("affine",        "affine",    0),
+    # ("scalar",        "scalar",    0),
+    # ("affine",        "affine",    0),
     ("linear1x1",     "linear1x1", 0),
-    ("low_rank_r4",   "low_rank",  4),
+    # ("low_rank_r4",   "low_rank",  4),
     ("low_rank_r8",   "low_rank",  8),
     ("low_rank_r16",  "low_rank",  16),
     ("low_rank_r32",  "low_rank",  32),
