@@ -85,17 +85,32 @@ class PatchedBlock(nn.Module):
         self.block_name = block_name
         self.track_in_block_order = track_in_block_order
 
+    # def forward(self, x: torch.Tensor, mode: str = "full") -> torch.Tensor:
+    #     if mode == "full":
+    #         return self.original_block(x)
+
+    #     plain, _ = _split_forward(self.original_block, x)
+    #     if mode == "plain":
+    #         return _postprocess_output(self.original_block, plain)
+    #     if mode == "compensated":
+    #         return _postprocess_output(self.original_block, self.compensator(plain))
+    #     raise ValueError(f"Unsupported block mode: {mode}")
+
     def forward(self, x: torch.Tensor, mode: str = "full") -> torch.Tensor:
         if mode == "full":
             return self.original_block(x)
 
-        plain, _ = _split_forward(self.original_block, x)
+        # 核心修复：如果是 plain 或 compensated，彻底只算主分支
         if mode == "plain":
+            plain = _forward_plain(self.original_block, x)
             return _postprocess_output(self.original_block, plain)
+            
         if mode == "compensated":
+            plain = _forward_plain(self.original_block, x)
             return _postprocess_output(self.original_block, self.compensator(plain))
+            
         raise ValueError(f"Unsupported block mode: {mode}")
-
+    
     def forward_collect(self, x: torch.Tensor, mode: str) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         plain, identity = _split_forward(self.original_block, x)
         output = self.forward(x, mode=mode)
@@ -358,3 +373,30 @@ def inject(
             block_order.append(module_name)
 
     return InjectedModel(model, block_order)
+
+
+def _forward_plain(original_block: nn.Module, x: torch.Tensor) -> torch.Tensor:
+    """仅执行主干特征提取，彻底跳过残差与下采样计算，避免显存峰值"""
+    if isinstance(original_block, BasicBlock):
+        out = original_block.conv1(x)
+        out = original_block.bn1(out)
+        out = original_block.relu(out)
+        out = original_block.conv2(out)
+        out = original_block.bn2(out)
+        return out
+
+    if isinstance(original_block, Bottleneck):
+        out = original_block.conv1(x)
+        out = original_block.bn1(out)
+        out = original_block.relu(out)
+        out = original_block.conv2(out)
+        out = original_block.bn2(out)
+        out = original_block.relu(out)
+        out = original_block.conv3(out)
+        out = original_block.bn3(out)
+        return out
+
+    if isinstance(original_block, InvertedResidual):
+        return original_block.conv(x)
+
+    raise TypeError(f"Unsupported block type: {type(original_block).__name__}")

@@ -70,20 +70,45 @@ def _measure_one(
     # ── 峰值内存测量：在一次干净的前向推理里测 ────────────────────────────
     # 预热结束后清零计数器，确保测的是"稳定状态"下的峰值，
     # 而不是包含初始化开销的历史最高值
+    # if device.type == "cuda":
+    #     torch.cuda.reset_peak_memory_stats(device)
+
+    # with torch.no_grad():
+    #     model(images, mode=mode, removed_blocks=removed_blocks)
+    # if device.type == "cuda":
+    #     torch.cuda.synchronize(device)
+
+    # peak_mb = (
+    #     torch.cuda.max_memory_allocated(device) / (1024 ** 2)
+    #     if device.type == "cuda"
+    #     else -1.0
+    # )
+
+    # ── 峰值内存测量：巧妙跳过 Stem 的干扰 ────────────────────────────
     if device.type == "cuda":
+        with torch.no_grad():
+            # 1. 先把极占显存的 Stem 跑完
+            x_stem = model.forward_to_split(images, split_point="stem", mode=mode, removed_blocks=removed_blocks)
+            
+        # 2. 清除不需要的缓存，并【重置峰值计数器】！
+        # 这样接下来的峰值，就是纯粹由“残差块”产生的，不再受 Stem 掩盖
+        torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats(device)
-
-    with torch.no_grad():
-        model(images, mode=mode, removed_blocks=removed_blocks)
-    if device.type == "cuda":
-        torch.cuda.synchronize(device)
-
-    peak_mb = (
-        torch.cuda.max_memory_allocated(device) / (1024 ** 2)
-        if device.type == "cuda"
-        else -1.0
-    )
-
+        
+        with torch.no_grad():
+            # 3. 仅测量核心残差阶段和头部的显存峰值
+            _ = model.forward_from_split(x_stem, split_point="stem", mode=mode, removed_blocks=removed_blocks)
+            
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)
+            
+        peak_mb = torch.cuda.max_memory_allocated(device) / (1024 ** 2)
+    else:
+        # CPU 逻辑保持不变（暂不处理）
+        with torch.no_grad():
+            model(images, mode=mode, removed_blocks=removed_blocks)
+        peak_mb = -1.0
+        
     # ── 延迟测量：多次重复取均值，GPU 需要在每次前后同步 ───────────────────
     # 为什么每次推理都要 synchronize？
     # CUDA 操作是异步的：Python 调用 model(images) 后立刻返回，
