@@ -12,22 +12,22 @@
 
 [Exp1-Stats] 所有 batch 处理完成，开始汇总...
 
-  layer1.0  L2-ratio=0.9131±0.0589  cosine=-0.7429±0.1562
-  layer1.1  L2-ratio=1.2131±0.1009  cosine=-0.0475±0.0098
-  layer1.2  L2-ratio=1.2124±0.0650  cosine=-0.0803±0.0242
-  layer2.0  L2-ratio=0.9816±0.1348  cosine=0.3350±0.0728
-  layer2.1  L2-ratio=0.9362±0.0354  cosine=-0.3126±0.0266
-  layer2.2  L2-ratio=1.0242±0.0266  cosine=-0.2689±0.0340
-  layer2.3  L2-ratio=1.1312±0.0318  cosine=-0.1824±0.0063
-  layer3.0  L2-ratio=1.3433±0.0842  cosine=0.3966±0.0235
-  layer3.1  L2-ratio=0.9624±0.0565  cosine=-0.2526±0.0153
-  layer3.2  L2-ratio=0.9634±0.0503  cosine=-0.2212±0.0116
-  layer3.3  L2-ratio=1.0412±0.0640  cosine=-0.2088±0.0127
-  layer3.4  L2-ratio=1.3994±0.0835  cosine=-0.2164±0.0138
-  layer3.5  L2-ratio=1.4221±0.0855  cosine=-0.2118±0.0072
-  layer4.0  L2-ratio=1.1114±0.0617  cosine=0.6313±0.0299
-  layer4.1  L2-ratio=3.6206±0.2894  cosine=-0.1609±0.0121
-  layer4.2  L2-ratio=5.4939±0.9893  cosine=-0.1756±0.0153
+  layer1.0              L2-ratio=0.9131±0.0589  cosine=-0.7429±0.1562
+  layer1.1              L2-ratio=1.2131±0.1009  cosine=-0.0475±0.0098
+  layer1.2              L2-ratio=1.2124±0.0650  cosine=-0.0803±0.0242
+  layer2.0              L2-ratio=0.9816±0.1348  cosine=0.3350±0.0728
+  layer2.1              L2-ratio=0.9362±0.0354  cosine=-0.3126±0.0266
+  layer2.2              L2-ratio=1.0242±0.0266  cosine=-0.2689±0.0340
+  layer2.3              L2-ratio=1.1312±0.0318  cosine=-0.1824±0.0063
+  layer3.0              L2-ratio=1.3433±0.0842  cosine=0.3966±0.0235
+  layer3.1              L2-ratio=0.9624±0.0565  cosine=-0.2526±0.0153
+  layer3.2              L2-ratio=0.9634±0.0503  cosine=-0.2212±0.0116
+  layer3.3              L2-ratio=1.0412±0.0640  cosine=-0.2088±0.0127
+  layer3.4              L2-ratio=1.3994±0.0835  cosine=-0.2164±0.0138
+  layer3.5              L2-ratio=1.4221±0.0855  cosine=-0.2118±0.0072
+  layer4.0              L2-ratio=1.1114±0.0617  cosine=0.6313±0.0299
+  layer4.1              L2-ratio=3.6206±0.2894  cosine=-0.1609±0.0121
+  layer4.2              L2-ratio=5.4939±0.9893  cosine=-0.1756±0.0153
 
 [Exp1-Stats] 完成。结果已保存至：Results/Exp1_Motivation/Motivation4_Residual_stats/20260412_2157_residual_stats.csv
 [Exp1-Stats] 共 16 行记录，对应 16 个有效残差块。
