@@ -17,7 +17,7 @@ Scripts/Exp1_Motivation/plot_residual_stats.py
 import csv
 from pathlib import Path
 from datetime import datetime
-
+from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -84,10 +84,11 @@ def plot_residual_stats(
         y=1.0, color=_CLR_RATIO, linestyle=":", linewidth=1.0, alpha=0.5, zorder=1,
     )
 
-    ax_ratio.set_xlabel("Residual Block Index")
+    ax_ratio.set_xlabel("Number of Removed Residual Blocks")
     ax_ratio.set_ylabel(r"L2-Norm Ratio  $\|F(x)\| / \|x\|$", color=_CLR_RATIO)
     ax_ratio.tick_params(axis="y", labelcolor=_CLR_RATIO)
-    ax_ratio.set_xlim(left=x[0], right=x[-1])
+    ax_ratio.set_xlim(left=x[0], right=x[-1]+1)
+    ax_ratio.xaxis.set_major_locator(MaxNLocator(integer=True))
     ratio_min = np.min(ratio_mean - ratio_std)
     ratio_max = np.max(ratio_mean + ratio_std)
     ratio_range = ratio_max - ratio_min if ratio_max != ratio_min else 1.0
@@ -123,7 +124,7 @@ def plot_residual_stats(
     handles_c, labels_c = ax_cos.get_legend_handles_labels()
     ax_ratio.legend(
         handles_r + handles_c, labels_r + labels_c,
-        loc="upper right", fontsize=9,
+        loc="upper left", fontsize=9,
         frameon=True, handlelength=1.5,
         handletextpad=0.3, borderpad=0.5,
     )

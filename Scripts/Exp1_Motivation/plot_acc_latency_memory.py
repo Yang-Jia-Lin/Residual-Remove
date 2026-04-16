@@ -15,6 +15,7 @@ import csv
 from pathlib import Path
 from datetime import datetime
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import numpy as np
 
 from Src.Plots.plot_utils import set_ieee_style, save_fig_for_ieee
@@ -117,6 +118,7 @@ def plot_combined_cost(
     ax.set_xlabel("Number of Removed Residual Blocks")
     ax.set_ylabel("Relative to Baseline (%)")
     ax.set_xlim(left=0, right=x_max)
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
     ax.legend(
         loc="lower left", fontsize=9,

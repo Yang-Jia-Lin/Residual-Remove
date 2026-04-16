@@ -12,9 +12,7 @@ Scripts/Exp1_Motivation/plot_collab_cost.py
 
 import csv
 from pathlib import Path
-from datetime import datetime
-from collections import defaultdict
-
+from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -76,7 +74,7 @@ def plot_collab_cost(
             key=lambda r: block_to_idx[r["block"]],
         )
         y = np.array([float(r["total_saved_pct"]) for r in bw_rows])
-        xi = np.array([block_to_idx[r["block"]] for r in bw_rows])
+        xi = np.array([block_to_idx[r["block"]] + 1 for r in bw_rows])
 
         all_y.extend(y)  # 【新增】将当前带宽的Y值加入集合
 
@@ -100,16 +98,11 @@ def plot_collab_cost(
 
     # ── 5. X 轴刻度：只标首/尾及均匀间隔，避免过密 ──────────────────────────
     n_blocks = len(block_names)
-    step = max(1, n_blocks // 8)
-    tick_positions = list(range(0, n_blocks, step))
-    if (n_blocks - 1) not in tick_positions:
-        tick_positions.append(n_blocks - 1)
-    ax.set_xticks(tick_positions)
-    ax.set_xticklabels([str(i + 1) for i in tick_positions])  # 1-indexed 更直观
-
-    ax.set_xlabel("Residual Block Index (Split Point)")
+    
+    ax.set_xlabel("Number of Removed Residual Blocks")
     ax.set_ylabel("Transmission Cost Saved (%)\n(Chain vs. DAG)")
-    ax.set_xlim(left=0, right=n_blocks - 1)
+    ax.set_xlim(left=0, right=n_blocks+1)
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
     ax.legend(
         title="Bandwidth", title_fontsize=9,
