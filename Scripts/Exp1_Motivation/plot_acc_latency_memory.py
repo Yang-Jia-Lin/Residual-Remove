@@ -147,7 +147,7 @@ def plot_combined_cost(
 
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    _ROOT = Path("/home/ResidualRemove/Results/Exp1_Motivation")
+    _ROOT = Path("/root/autodl-tmp/Residual-Remove/Results/Exp1_Motivation")
     save_dir = _ROOT / "Motivation1_Inference_cost"
     cost_csv = _ROOT / "Motivation1_Inference_cost" / "20260412_2150_memory_cost.csv"
     acc_csv  = _ROOT / "Motivation3_Acc_drop"       / "20260412_2157_acc_drop.csv"
