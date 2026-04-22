@@ -1,8 +1,8 @@
 """Src/Utils/calibration.py"""
-
 import random
 from torch.utils.data import DataLoader, Dataset, Subset
 from collections.abc import Sized
+
 
 def sample_calibration_subset(dataset: Dataset, calib_size: int, seed: int = 42) -> Dataset:
     if not isinstance(dataset, Sized):

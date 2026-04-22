@@ -1,8 +1,5 @@
-"""Src/Models_Nets/origin/mobilenet.py"""
-
-"""官方 MobileNet 模型"""
-
-from __future__ import annotations
+""" Src/Models_Nets/origin/mobilenet.py
+    官方 MobileNet 模型"""
 from torch import nn
 from torchvision.models import MobileNet_V2_Weights, mobilenet_v2
 from torchvision.models.mobilenetv2 import InvertedResidual, MobileNetV2

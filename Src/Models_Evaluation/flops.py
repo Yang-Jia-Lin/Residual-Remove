@@ -1,20 +1,10 @@
 """Src/Models_Evaluation/flops.py"""
-
-# src/evaluation/flops.py
-"""参数量与模型计算量 FLPOS 静态分析"""
-from __future__ import annotations
-
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Generator
-
 import torch
 from torch import nn
 
-
-# ---------------------------------------------------------------------------
-# 数据类
-# ---------------------------------------------------------------------------
 
 @dataclass
 class ModelCost:
@@ -42,10 +32,6 @@ class ModelCost:
             f"参数内存 (fp32): {self.param_mb:.2f} MB"
         )
 
-
-# ---------------------------------------------------------------------------
-# 内部工具
-# ---------------------------------------------------------------------------
 
 @contextmanager
 def _eval_mode(model: nn.Module) -> Generator[None, None, None]:
@@ -158,10 +144,7 @@ def analyze_model(
     sample: torch.Tensor,
     **forward_kwargs,
 ) -> ModelCost:
-    """一次性计算所有静态代价指标，返回结构化的 ModelCost。
-
-    运行时峰值内存测量请使用 memory.py 中的 measure_peak_memory。
-    """
+    """一次性计算所有静态代价指标，返回结构化的 ModelCost"""
     total    = count_parameters(model)
     comp     = count_compensator_parameters(model)
     backbone = total - comp

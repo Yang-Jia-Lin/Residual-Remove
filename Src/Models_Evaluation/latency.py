@@ -1,22 +1,12 @@
-"""Src/Models_Evaluation/latency.py"""
-
-# src/evaluation/latency.py
-"""推理延迟测量工具。
-
-GPU 延迟测量的三个关键点：
-  1. 预热（warmup）：GPU 的 JIT 编译和 CUDA kernel 初始化会在前几次推理中发生，
-                     如果不预热就开始计时，数据会严重偏高。
-  2. CUDA 同步：CUDA 的操作是异步的，time.perf_counter() 记录的是"提交命令"的时间，
-                而不是"执行完毕"的时间。必须用 torch.cuda.synchronize() 等待 GPU 真正跑完。
-  3. 多次重复取均值：单次测量噪声很大，重复 20~50 次取均值才稳定。
+""" Src/Models_Evaluation/latency.py
+    1. 预热（warmup）：GPU 的 JIT 编译和 CUDA kernel 初始化会在前几次推理中发生
+    2. CUDA 同步：CUDA 的操作是异步的，须用 torch.cuda.synchronize() 等待 GPU 真正跑完
+    3. 多次重复取均值：单次测量噪声很大，重复 20~50 次取均值稳定
 """
-from __future__ import annotations
-
 import time
 import statistics
 from dataclasses import dataclass
 from typing import Any
-
 import torch
 
 
@@ -40,7 +30,7 @@ class LatencyResult:
 
 @dataclass
 class LatencyComparison:
-    """full mode vs plain mode 延迟对比，动机实验的核心输出。"""
+    """full mode vs plain mode 延迟对比"""
     full:        LatencyResult
     plain:       LatencyResult
     speedup:     float   # plain / full 的加速比，> 1 说明 plain 更快
@@ -61,12 +51,7 @@ def measure_latency(
     warmup: int = 10,
     **forward_kwargs: Any,
 ) -> LatencyResult:
-    """测量单种推理配置下的延迟，返回均值/最小值/标准差。
-
-    Args:
-        repetitions: 正式测量的重复次数，越大结果越稳定，建议 ≥ 20。
-        warmup:      预热次数，CPU 上建议 5，GPU 上建议 10。
-    """
+    """测量单种推理配置下的延迟，返回均值/最小值/标准差"""
     model.eval()
     device = sample.device
 

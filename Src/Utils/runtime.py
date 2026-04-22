@@ -1,7 +1,4 @@
 """Src/Utils/runtime.py"""
-
-from __future__ import annotations
-
 import csv
 import random
 from pathlib import Path
@@ -27,11 +24,7 @@ def resolve_device(device: str) -> torch.device:
 
 
 def write_csv(output: str | Path, rows: list[dict]) -> Path:
-    """把一组字典写成 CSV 文件，自动创建父目录。
-    
-    列顺序由第一行字典的 key 顺序决定，之后每行必须有相同的 key。
-    返回实际写入的路径，方便调用方打印确认信息。
-    """
+    """把一组字典写成 CSV 文件，自动创建父目录"""
     path = Path(output)
     path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -1,8 +1,4 @@
 """Src/Models_Training/trainer.py"""
-
-"""Training and evaluation"""
-from __future__ import annotations
-
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -46,12 +42,6 @@ def _forward(
     mode: str,
     removed_blocks: list[str] | None,
 ) -> torch.Tensor:
-    """统一的前向调用入口。
-
-    InjectedModel 接受 mode 和 removed_blocks 参数，
-    但标准 torchvision 模型不接受这些额外参数。
-    这个函数在调用前做类型判断，保证两种模型都能正常工作。
-    """
     # 检查模型是否支持 mode 参数（即是否是 InjectedModel）
     if hasattr(model, "get_block_names"):
         return model(images, mode=mode, removed_blocks=removed_blocks)
@@ -59,7 +49,6 @@ def _forward(
 
 
 # ── 单 epoch 训练 ───────────────────────────────────────────────────────────────
-
 def train_one_epoch(
     model: nn.Module,
     dataloader: DataLoader,
@@ -113,7 +102,6 @@ def train_one_epoch(
 
 
 # ── 评估 ──────────────────────────────
-
 def evaluate_model(
     model: nn.Module,
     dataloader: DataLoader,

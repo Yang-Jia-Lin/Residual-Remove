@@ -1,8 +1,4 @@
 """Src/Models_Nets/injector.py"""
-
-"""把官方模型中匹配的 block 替换成 PatchedBlock，返回 InjectedModel"""
-
-from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Sequence
 import torch

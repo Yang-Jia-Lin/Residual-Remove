@@ -1,16 +1,5 @@
-"""Src/Models_Nets/builder.py"""
-
-"""加载原始模型并注入补偿器（所有脚本的入口）
-    from models.builder import build_model, get_block_names
-    model1 = build_model("resnet50", num_classes=1000, pretrained=True)
-    model2 = build_model("resnet50", pretrained=True, compensator_name="lora", compensator_rank=16)
-    model3 = build_model("resnet50", pretrained=True, compensator_name="affine")
-    model4 = build_model("mobilenet_v2", num_classes=1000, pretrained=True, compensator_name="lora")
-    model5 = build_model("resnet18", num_classes=100, pretrained=False)
-    names = get_block_names(model5)
-"""
-
-from __future__ import annotations
+""" Src/Models_Nets/builder.py
+    加载原始模型并注入补偿器（所有脚本的入口）"""
 import copy
 from torch import nn
 from Src.Models_Nets.injector import inject, mobilenet_block_specs, resnet_block_specs
@@ -91,36 +80,10 @@ def get_block_names(model: nn.Module) -> list[str]:
 
 
 if __name__ == "__main__":
-    import torch
-
-    print("=== 开始测试 builder.py ===")
-    
-    # 1. 实例化模型（使用 resnet18 加快测试速度，不下载预训练权重）
-    model_name = "resnet18"
-    print(f"1. 正在构建 {model_name} 并注入动态路由...")
-    model = build_model(model_name, num_classes=1000, pretrained=True)
-    model.eval()  # 设置为推理模式
-
-    # 2. 获取并打印切分点/残差块名称，验证注入是否成功
-    blocks = get_block_names(model)
-    print(f"2. 获取到 {len(blocks)} 个残差块。")
-    print(f"   前三个 Block: {blocks[:3]}")
-    print(f"   后三个 Block: {blocks[-3:]}")
-
-    # 3. 构造输入数据 (BatchSize=1, Channels=3, Height=224, Width=224)
-    dummy_input = torch.randn(1, 3, 224, 224)
-    print(f"3. 构造虚拟输入图像，形状为: {dummy_input.shape}")
-
-    # 4. 执行前向推理测试
-    print("4. 开始前向推理...")
-    with torch.no_grad():
-        # 测试 1：作为普通 ResNet 进行全量推理（Baseline）
-        out_full = model(dummy_input, mode="full")
-        print(f"   [普通模式] 输出形状: {out_full.shape} (期望为 [1, 1000])")
-        
-        # 测试 2：测试你的核心动机实验特性 —— 强行删掉最后一个 Block 的残差
-        target_remove = [blocks[-1]]
-        out_plain = model(dummy_input, mode="plain", removed_blocks=target_remove)
-        print(f"   [删残差模式] 移除了 {target_remove}，输出形状: {out_plain.shape}")
-
-    print("=== 测试完成！===")
+    from models.builder import build_model, get_block_names
+    model1 = build_model("resnet50", num_classes=1000, pretrained=True)
+    model2 = build_model("resnet50", pretrained=True, compensator_name="lora", compensator_rank=16)
+    model3 = build_model("resnet50", pretrained=True, compensator_name="affine")
+    model4 = build_model("mobilenet_v2", num_classes=1000, pretrained=True, compensator_name="lora")
+    model5 = build_model("resnet18", num_classes=100, pretrained=False)
+    names = get_block_names(model5)

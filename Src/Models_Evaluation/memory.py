@@ -1,27 +1,11 @@
-"""Src/Models_Evaluation/memory.py"""
-
-# src/evaluation/memory.py
-"""峰值内存占用测量。
-
-GPU 和 CPU 的测量策略不同，需要分开处理：
-
-GPU：PyTorch 内置了精确的显存追踪器（torch.cuda.max_memory_allocated），
-     reset 峰值计数器后再推理，得到的就是本次 forward 的精确峰值显存。
-
-CPU：Python 层面没有简单的"峰值内存"接口。这里用标准库的 tracemalloc
-     追踪 Python 堆的分配峰值，能抓到 tensor 的 Python 对象开销，
-     但不包含 PyTorch C++ 后端预先分配的内存池。
-     因此 CPU 的数字是参考估算值，不如 GPU 精确。
-     对于动机实验来说，我们关心的主要是相对变化（full vs plain），
-     不是绝对数值，所以这个精度已经足够。
+""" Src/Models_Evaluation/memory.py
+    GPU：PyTorch 内置显存追踪器（torch.cuda.max_memory_allocated）
+    CPU：Python 层面没有"峰值内存"接口。这里用标准库的 tracemalloc 参考估算值，不如 GPU 精确
 """
-from __future__ import annotations
-
 import tracemalloc
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Generator
-
 import torch
 from torch import nn
 
@@ -93,12 +77,7 @@ def measure_peak_memory(
     sample: torch.Tensor,
     **forward_kwargs: Any,
 ) -> MemoryResult:
-    """测量一次前向推理的峰值内存占用。
-
-    根据设备类型自动选择测量方式：
-    - CUDA：reset 峰值计数器后推理，结果是本次 forward 的精确峰值显存
-    - CPU ：tracemalloc 估算，反映相对变化
-    """
+    """测量一次前向推理的峰值内存占用"""
     device = sample.device
 
     if device.type == "cuda":
@@ -162,19 +141,7 @@ def compare_memory(
     sample:      torch.Tensor,
     **forward_kwargs: Any,
 ) -> MemoryComparison:
-    """对比 full model 和 plain model 的峰值内存占用。
-
-    plain model 移除了残差连接，不再需要在内存中同时保留 F(x) 和 x，
-    理论上峰值内存应当下降。这个函数量化这个下降幅度。
-
-    两个 model 应当处于相同设备，sample 的 device 决定测量方式。
-
-    Args:
-        full_model:  带残差连接的原始模型。
-        plain_model: 移除残差连接后的模型（可含补偿器）。
-        sample:      用于 forward 的输入张量。
-        **forward_kwargs: 透传给两个模型的额外参数。
-    """
+    """对比 full model 和 plain model 的峰值内存占用"""
     full_result  = measure_peak_memory(full_model,  sample, **forward_kwargs)
     plain_result = measure_peak_memory(plain_model, sample, **forward_kwargs)
 
