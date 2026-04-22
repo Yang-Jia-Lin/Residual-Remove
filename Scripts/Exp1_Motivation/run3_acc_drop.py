@@ -4,7 +4,7 @@
 import argparse
 from pathlib import Path
 from datetime import datetime
-from Scripts.common import add_common_args, build_setup
+from Scripts.Utils.common import add_common_args, build_setup
 from Src.Models_Training.trainer import evaluate_model
 from Src.Utils.runtime import write_csv
 

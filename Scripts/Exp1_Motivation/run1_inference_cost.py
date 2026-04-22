@@ -18,7 +18,7 @@ import torch
 from pathlib import Path
 from datetime import datetime
 
-from Scripts.common import add_common_args, build_setup
+from Scripts.Utils.common import add_common_args, build_setup
 from Src.Utils.runtime import write_csv
 
 

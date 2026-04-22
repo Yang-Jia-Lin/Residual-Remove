@@ -10,7 +10,7 @@ import torch
 from Configs.paras import DATA_DIR
 from Configs.model_config import model_config
 from Src.Models_Nets import build_model
-from Src.DatasetsProcess.datasets import make_dataloaders
+from Src.Utils.data_utils import make_dataloaders
 
 
 # ── 根据数据集名称自动推断合理的图片尺寸 ─────────────────────────────────────

@@ -10,7 +10,7 @@ else:
     BASE_DIR = Path("/root/autodl-tmp/ResidualRemove")
     DATA_DIR = Path("/root/autodl-tmp/0-Data")
 
-# RESULT_DIR = BASE_DIR / "Results"
+RESULT_DIR = BASE_DIR / "Results"
 RESULT_DIR_1 = BASE_DIR / "Results" / "Exp1_Motivation"
 RESULT_DIR_2 = BASE_DIR / "Results" / "Exp2_Compensator"
 # RESULT_DIR_3 = BASE_DIR / "Results" / "Exp3_Motivation"

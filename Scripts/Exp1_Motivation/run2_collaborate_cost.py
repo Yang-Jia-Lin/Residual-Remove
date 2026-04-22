@@ -12,7 +12,7 @@ import yaml
 from pathlib import Path
 from datetime import datetime
 
-from Scripts.common import add_common_args, build_setup, get_probe_batch
+from Scripts.Utils.common import add_common_args, build_setup, get_probe_batch
 from Src.Collab_System.bandwidth_sim import estimate_transfer_time_ms, saved_transfer_ratio
 from Src.Utils.runtime import tensor_bytes, write_csv
 
