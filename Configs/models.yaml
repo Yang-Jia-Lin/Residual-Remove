@@ -1,3 +1,4 @@
+# Configs/models.yaml
 {
   "resnet18": {
     "family": "resnet",
