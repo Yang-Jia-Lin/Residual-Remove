@@ -1,3 +1,5 @@
+"""Src/Models_Nets/origin/mobilenet.py"""
+
 """官方 MobileNet 模型"""
 
 from __future__ import annotations

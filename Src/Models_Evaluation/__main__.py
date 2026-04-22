@@ -1,3 +1,5 @@
+"""Src/Models_Evaluation/__main__.py"""
+
 # src/evaluation/__main__.py
 """一键运行所有评估模块的冒烟测试。
 

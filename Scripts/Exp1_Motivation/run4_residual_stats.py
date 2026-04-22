@@ -1,3 +1,5 @@
+"""Scripts/Exp1_Motivation/run4_residual_stats.py"""
+
 """动机实验4：残差分支 F(x) 和identity分支 x 的 L2-norm 比值与余弦相似度。
 
   论点：identity 分支（即 x）是结构的信号，不是可以忽略的噪声，证明"为什么不能直接删残差"

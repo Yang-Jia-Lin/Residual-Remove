@@ -1,3 +1,5 @@
+"""Src/Models_Evaluation/flops.py"""
+
 # src/evaluation/flops.py
 """参数量与模型计算量 FLPOS 静态分析"""
 from __future__ import annotations

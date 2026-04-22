@@ -1,3 +1,5 @@
+"""Src/Plots/plot_utils.py"""
+
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 

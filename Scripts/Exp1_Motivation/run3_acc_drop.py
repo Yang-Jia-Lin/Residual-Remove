@@ -1,3 +1,5 @@
+"""Scripts/Exp1_Motivation/run3_acc_drop.py"""
+
 """动机实验3：逐步删除残差块的精度下降趋势"""
 import argparse
 from pathlib import Path

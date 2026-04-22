@@ -1,3 +1,5 @@
+"""Scripts/Exp2_Compensator/run_benchmark.py"""
+
 """实验2：补偿方法基准测试对比
 
 固定校准策略（冻结主干 + 1024 张校准图像），对比各补偿方法的综合指标：

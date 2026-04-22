@@ -1,3 +1,5 @@
+"""Src/Models_Training/trainer.py"""
+
 """Training and evaluation"""
 from __future__ import annotations
 

@@ -1,3 +1,5 @@
+"""Src/Models_Evaluation/latency.py"""
+
 # src/evaluation/latency.py
 """推理延迟测量工具。
 

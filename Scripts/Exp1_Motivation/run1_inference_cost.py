@@ -1,3 +1,5 @@
+"""Scripts/Exp1_Motivation/run1_inference_cost.py"""
+
 """动机实验1：删除残差的综合收益分析
   (1) 理论 FLOPS 不变
   (2) 实际推理峰值内存下降：

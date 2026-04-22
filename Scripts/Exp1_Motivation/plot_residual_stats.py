@@ -1,3 +1,5 @@
+"""Scripts/Exp1_Motivation/plot_residual_stats.py"""
+
 """
 Scripts/Exp1_Motivation/plot_residual_stats.py
 

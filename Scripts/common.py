@@ -1,3 +1,5 @@
+"""Scripts/common.py"""
+
 """experiments/common.py — 实验脚本的公共初始化逻辑。
 
 所有 Exp1/Exp2/Exp3 脚本都通过 add_common_args + build_setup 完成

@@ -1,3 +1,5 @@
+"""Scripts/Exp4_Ablation/run_generalization.py"""
+
 from __future__ import annotations
 
 import argparse
