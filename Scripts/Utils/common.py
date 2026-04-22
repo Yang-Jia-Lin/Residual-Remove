@@ -6,10 +6,13 @@ import random
 from typing import Any
 
 import torch
+from pathlib import Path
 
+from Configs.paras import RESULT_DIR
 from Configs.paras import DATA_DIR
 from Configs.model_config import model_config
 from Src.Models_Nets import build_model
+from Src.Models_Training.finetune import load_finetuned
 from Src.Utils.data_utils import make_dataloaders
 
 
@@ -47,6 +50,10 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--no-pretrained", dest="pretrained", action="store_false",
         help="从随机初始化开始（用于消融对照）"
+    )
+    parser.add_argument(
+        "--checkpoint", default="auto",
+        help="fine-tuned checkpoint 路径或文件名。设为 'auto' 会自动寻找 {model}_{dataset}.pth，不指定则用默认权重。"
     )
 
     # ── 数据集参数 ──────────────────────────────────────────────────────
@@ -134,6 +141,31 @@ def build_setup(
         compensator_rank = compensator_rank,
     ).to(device)
     model.eval()
+    
+
+    # ── 自动/手动加载 checkpoint ──
+    if hasattr(args, "checkpoint") and args.checkpoint is not None:
+        ckpt_dir = RESULT_DIR / "Checkpoints"
+        ckpt_dir.mkdir(parents=True, exist_ok=True) # 确保文件夹存在
+
+        if args.checkpoint == "auto":
+            # 自动推断权重文件名，例如: resnet50_imagenet100.pth
+            auto_ckpt_name = f"{args.model}_{dataset_name}.pth"
+            ckpt_path = ckpt_dir / auto_ckpt_name
+            
+            if ckpt_path.exists():
+                print(f"[setup] 自动检测到微调权重，正在加载: {auto_ckpt_name}")
+                load_finetuned(model, str(ckpt_path))
+            else:
+                print(f"[setup] 未找到 {auto_ckpt_name}，使用原始 pretrained 权重。")
+        else:
+            # 兼容手动指定权重的情况
+            ckpt_path = Path(args.checkpoint) if Path(args.checkpoint).is_absolute() else ckpt_dir / args.checkpoint
+            if ckpt_path.exists():
+                print(f"[setup] 手动指定加载权重: {ckpt_path.name}")
+                load_finetuned(model, str(ckpt_path))
+            else:
+                raise FileNotFoundError(f"找不到指定的权重文件: {ckpt_path}")
     n_blocks = len(model.get_block_names())
 
     print(f"[setup] 设备：{device}  种子：{seed}")

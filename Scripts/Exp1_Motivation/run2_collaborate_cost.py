@@ -1,5 +1,3 @@
-"""Scripts/Exp1_Motivation/run2_collaborate_cost.py"""
-
 """动机实验2：删除残差在模型切分时的收益分析
    端边云协同模型切分时，传输开销包含：数据量 → 序列化时间 → 网络传输时间 → 总系统时间
 """
@@ -8,10 +6,11 @@ import io
 import sys
 import time
 import torch
-import yaml
 from pathlib import Path
 from datetime import datetime
 
+from Configs.paras import RESULT_DIR_1
+from Configs.simulate_config import simulate_config  # <-- 新增导入
 from Scripts.Utils.common import add_common_args, build_setup, get_probe_batch
 from Src.Collab_System.bandwidth_sim import estimate_transfer_time_ms, saved_transfer_ratio
 from Src.Utils.runtime import tensor_bytes, write_csv
@@ -22,11 +21,6 @@ def build_parser() -> argparse.ArgumentParser:
         description="量化删除残差在模型切分时的收益"
     )
     add_common_args(parser)
-    parser.add_argument(
-        "--system-config", 
-        default="Configs/system.yaml",
-        help="端边云协同系统配置 YAML 文件路径，包含带宽和协议开销等参数（默认 Configs/system.yaml）"
-    )
     parser.add_argument(
         "--output", 
         default=None,
@@ -62,20 +56,15 @@ def main() -> None:
     model  = setup["model"]
     bundle = setup["bundle"]
     device = setup["device"]
-    cfg    = setup["cfg"]
 
-    sys_cfg_path = Path(args.system_config)
-    if not sys_cfg_path.exists():
-        raise FileNotFoundError(f"找不到系统配置文件：{sys_cfg_path}")
-    sys_cfg = yaml.safe_load(sys_cfg_path.read_text(encoding="utf-8"))
-
-    bandwidth_list       = [float(b) for b in sys_cfg["bandwidth_mbps"]]
-    protocol_overhead_ms = float(sys_cfg["protocol_overhead_ms"])
+    # ── 核心修改点：直接从 simulate_config 获取配置，删去 yaml 加载逻辑 ──
+    bandwidth_list       = [float(b) for b in simulate_config.bandwidth_mbps]
+    protocol_overhead_ms = float(simulate_config.protocol_overhead_ms)
 
     current_time = datetime.now().strftime("%Y%m%d_%H%M")
     output_path = Path(
         args.output
-        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation2_Collaborate_cost" / f"{current_time}_system_cost.csv"
+        or RESULT_DIR_1 / "Motivation2_Collaborate_cost" / f"{current_time}_system_cost.csv"
     )
 
     print(f"\n[Exp1-Collaborate] 模型：{args.model}")

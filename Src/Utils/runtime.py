@@ -7,8 +7,6 @@ from typing import Any
 import numpy as np
 import torch
 
-from .config import ensure_dir, resolve_path
-
 
 def set_seed(seed: int) -> None:
     random.seed(seed)

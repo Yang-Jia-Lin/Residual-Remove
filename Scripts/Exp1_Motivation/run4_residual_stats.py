@@ -21,6 +21,7 @@ from collections import defaultdict
 from pathlib import Path
 from datetime import datetime
 
+from Configs.paras import RESULT_DIR_1
 from Scripts.Utils.common import add_common_args, build_setup
 from Src.Utils.runtime import write_csv
 
@@ -45,15 +46,10 @@ def main() -> None:
     model  = setup["model"]
     bundle = setup["bundle"]
     device = setup["device"]
-    cfg    = setup["cfg"]
     blocks = model.get_block_names()
 
-    # 输出路径：和 run_acc_drop.py 保持完全相同的解析逻辑
     current_time = datetime.now().strftime("%Y%m%d_%H%M")
-    output_path = Path(
-        args.output
-        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation4_Residual_stats" / f"{current_time}_residual_stats.csv"
-    )
+    output_path = Path(args.output or RESULT_DIR_1 / "Exp1_Motivation" / "Motivation4_Residual_stats" / f"{current_time}_residual_stats.csv")
 
     print(f"\n[Exp1-Stats] 开始残差统计实验")
     print(f"[Exp1-Stats] 共 {len(blocks)} 个残差块")

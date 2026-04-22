@@ -18,6 +18,7 @@ import torch
 from pathlib import Path
 from datetime import datetime
 
+from Configs.paras import RESULT_DIR_1
 from Scripts.Utils.common import add_common_args, build_setup
 from Src.Utils.runtime import write_csv
 
@@ -138,14 +139,15 @@ def main() -> None:
     model  = setup["model"]
     bundle = setup["bundle"]
     device = setup["device"]
-    cfg    = setup["cfg"]
     blocks = model.get_block_names()
 
     current_time = datetime.now().strftime("%Y%m%d_%H%M")
     output_path = Path(
         args.output
-        or Path(cfg["paths"]["result_root"]) / "Exp1_Motivation" / "Motivation1_Inference_cost" / f"{current_time}_memory_cost.csv"
+        if getattr(args, 'output', None) 
+        else RESULT_DIR_1 / "Motivation1_Inference_cost" / f"{current_time}_memory_cost.csv"
     )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if device.type != "cuda":
         print("[警告] 未检测到 CUDA 设备，峰值内存列将显示 -1（不可测）。")
