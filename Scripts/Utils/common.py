@@ -30,12 +30,12 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     """向 parser 添加所有实验脚本通用的命令行参数"""
     # ── 环境参数 ────────────────────────────────────────────────────────
     parser.add_argument(
-        "--device", default=None,
-        help=f"运行设备，如 'cuda:0' 或 'cpu'。不指定则使用 model_config 中的值（当前：{model_config.hardware.device}）"
+        "--device", default=model_config.hardware.device,
+        help="运行设备，如 'cuda:0' 或 'cpu'"
     )
     parser.add_argument(
-        "--seed", type=int, default=None,
-        help=f"随机种子。不指定则使用 model_config 中的值（当前：{model_config.hardware.seed}）"
+        "--seed", type=int, default=model_config.hardware.seed,
+        help="随机种子"
     )
 
     # ── 模型参数 ────────────────────────────────────────────────────────
@@ -58,16 +58,16 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
 
     # ── 数据集参数 ──────────────────────────────────────────────────────
     parser.add_argument(
-        "--dataset", default=None,
-        help=f"数据集名称。不指定则使用 model_config 中的值（当前：{model_config.data.default_dataset}）"
+        "--dataset", default=model_config.data.default_dataset,
+        help="数据集名称"
     )
     parser.add_argument(
-        "--data-root", default=None,
-        help=f"数据集根目录。不指定则使用 DATA_DIR（当前：{DATA_DIR}）"
+        "--data-root", default=DATA_DIR,  # <--- 直接使用 paras.py 中的 DATA_DIR
+        help="数据集根目录"
     )
     parser.add_argument(
-        "--batch-size", type=int, default=None,
-        help=f"batch size。不指定则使用 model_config 中的值（当前：{model_config.train.batch_size}）"
+        "--batch-size", type=int, default=model_config.train.batch_size,
+        help="batch size"
     )
     parser.add_argument(
         "--val-size", type=int, default=None,
@@ -75,20 +75,18 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--image-size", type=int, default=None,
-        help="输入图片尺寸。不指定则根据数据集自动推断（imagenet100=224，cifar=32）。"
+        help="输入图片尺寸。不指定则根据数据集自动推断或使用默认值。"
     )
     parser.add_argument(
-        "--num-workers", type=int, default=None,
-        help=f"DataLoader worker 数量。不指定则使用 model_config 中的值（当前：{model_config.hardware.num_workers}）"
+        "--num-workers", type=int, default=model_config.hardware.num_workers,
+        help="DataLoader worker 数量"
     )
 
     # ── 实验控制 ────────────────────────────────────────────────────────
     parser.add_argument(
         "--max-batches", type=int, default=None,
-        help="每次 evaluate_model 最多跑多少个 batch。"
-             "不指定则跑完整个验证集。调试时可设为 10 快速验证流程。"
+        help="每次 evaluate_model 最多跑多少个 batch。不指定则跑完整个验证集。调试时可设为 10 快速验证流程。"
     )
-
 
 def build_setup(
     args: argparse.Namespace,
@@ -97,36 +95,43 @@ def build_setup(
 ) -> dict[str, Any]:
     """根据命令行参数和 model_config，完成模型、数据集、设备的初始化"""
     
-    # ── 设备 ────────────────────────────────────────────────────────────
-    device_str = args.device or model_config.hardware.device
+    # ── 1. 全局配置同步 (Single Source of Truth) ────────────────────────
+    # 将解析到的命令行参数写回 model_config，确保全局环境获取到的参数一致
+    model_config.hardware.device = args.device
+    model_config.hardware.seed = args.seed
+    model_config.hardware.num_workers = args.num_workers
+    model_config.data.default_dataset = args.dataset
+    model_config.train.batch_size = args.batch_size
+
+    # ── 设备与随机种子 ──────────────────────────────────────────────────
+    device_str = model_config.hardware.device
     if device_str.startswith("cuda") and not torch.cuda.is_available():
         print(f"[setup] ⚠ 指定了 {device_str} 但 CUDA 不可用，自动降级到 cpu")
         device_str = "cpu"
+        model_config.hardware.device = "cpu"  # 同步降级信息
+    
     device = torch.device(device_str)
-
-    # ── 随机种子 ────────────────────────────────────────────────────────
-    seed = args.seed if args.seed is not None else model_config.hardware.seed
+    
+    seed = model_config.hardware.seed
     torch.manual_seed(seed)
     random.seed(seed)
 
-    # ── 数据集参数 ──────────────────────────────────────────────────────
-    dataset_name = args.dataset   or model_config.data.default_dataset
-    data_root    = args.data_root or DATA_DIR
-    num_workers  = args.num_workers  if args.num_workers  is not None else model_config.hardware.num_workers
-    batch_size   = args.batch_size   if args.batch_size   is not None else model_config.train.batch_size
-    image_size   = (
+    # ── 数据集参数推断 ──────────────────────────────────────────────────
+    # 如果命令行没传 image_size，优先看字典推断，最后用 model_config 兜底
+    final_image_size = (
         args.image_size
-        or _DEFAULT_IMAGE_SIZE.get(dataset_name.lower())
+        or _DEFAULT_IMAGE_SIZE.get(model_config.data.default_dataset.lower())
         or model_config.data.default_image_size
     )
+    model_config.data.default_image_size = final_image_size # 同步最终推断结果
 
     # ── 构建数据集 ──────────────────────────────────────────────────────
     bundle = make_dataloaders(
-        dataset_name         = dataset_name,
-        data_root            = data_root,
-        batch_size           = batch_size,
-        image_size           = image_size,
-        num_workers          = num_workers,
+        dataset_name         = model_config.data.default_dataset,
+        data_root            = args.data_root,
+        batch_size           = model_config.train.batch_size,
+        image_size           = final_image_size,
+        num_workers          = model_config.hardware.num_workers,
         synthetic_if_missing = True,
         val_size             = args.val_size,
         seed                 = seed,
@@ -150,7 +155,7 @@ def build_setup(
 
         if args.checkpoint == "auto":
             # 自动推断权重文件名，例如: resnet50_imagenet100.pth
-            auto_ckpt_name = f"{args.model}_{dataset_name}.pth"
+            auto_ckpt_name = f"{args.model}_{model_config.data.default_dataset}.pth"
             ckpt_path = ckpt_dir / auto_ckpt_name
             
             if ckpt_path.exists():
@@ -169,8 +174,8 @@ def build_setup(
     n_blocks = len(model.get_block_names())
 
     print(f"[setup] 设备：{device}  种子：{seed}")
-    print(f"[setup] 数据集：{dataset_name}  图片尺寸：{image_size}×{image_size}  类别数：{bundle.num_classes}")
-    print(f"[setup] batch_size：{batch_size}  验证批次数：{len(bundle.val_loader)}  num_workers：{num_workers}")
+    print(f"[setup] 数据集：{model_config.data.default_dataset}  图片尺寸：{final_image_size}×{final_image_size}  类别数：{bundle.num_classes}")
+    print(f"[setup] batch_size：{model_config.train.batch_size}  验证批次数：{len(bundle.val_loader)}  num_workers：{model_config.hardware.num_workers}")
     print(f"[setup] 模型：{args.model}  残差块数：{n_blocks}  预训练：{args.pretrained}")
 
     return {"model": model, "bundle": bundle, "device": device}

@@ -1,30 +1,14 @@
 """Scripts/Exp2_Compensator/run_benchmark.py"""
-
-"""实验2：补偿方法基准测试对比
-
-固定校准策略（冻结主干 + 1024 张校准图像），对比各补偿方法的综合指标：
-  Top-1 / Top-5 精度、参数量、FLOPs、推理延迟、峰值内存
-
-对比对象（按表达力从弱到强排列）：
-  full_residual            : 原始带残差模型，作为 upper bound 参考
-  plain                    : 暴力删残差，无补偿，作为 lower bound 参考
-  scalar                   : α·z
-  affine                   : γ⊙z + β
-  linear1x1                : W_{1×1}·z
-  low_rank_r{4,8,16,32}   : W₂W₁z，不同秩
-  adapter                  : W₂σ(W₁z)，non-linear upper bound
-"""
-from __future__ import annotations
-
 import argparse
 import logging
 import sys
+import torch
 from datetime import datetime
 from pathlib import Path
 
-import torch
-
-from Scripts.common import add_common_args, build_setup, resolve_removed_blocks
+from Configs.paras import RESULT_DIR_2
+from Configs.model_config import model_config
+from Scripts.Utils.common import add_common_args, build_setup, resolve_removed_blocks
 from Src.Models_Evaluation.flops import count_parameters, estimate_macs
 from Src.Models_Evaluation.latency import measure_latency
 from Src.Models_Evaluation.memory import measure_peak_memory
@@ -49,10 +33,10 @@ VARIANTS: list[tuple[str, str, int]] = [
     ("adapter",       "adapter",   16),
 ]
 
-OUTPUT_ROOT = Path("Results/Exp2_Compensator")
+OUTPUT_ROOT = RESULT_DIR_2
 
 # linear1x1 参数量是其他方法的 ~80 倍（2048×2048），
-# 用默认 lr=1e-3 步子太大会直接训飞，单独指定小 lr
+# 用默认 lr=1e-3 步子太大，单独指定小 lr
 VARIANT_LR: dict[str, float] = {
     "linear1x1": 1e-4,
 }
@@ -68,24 +52,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_common_args(parser)
     parser.add_argument(
-        "--removed-blocks", default="all",
+        "--removed-blocks", default="layer2.3",
+        # Resnet50 支持的块：
+        # ['layer1.0', 'layer1.1', 'layer1.2', 
+        # 'layer2.0', 'layer2.1', 'layer2.2', 'layer2.3', 
+        # 'layer3.0', 'layer3.1', 'layer3.2', 'layer3.3', 'layer3.4', 'layer3.5', 
+        # 'layer4.0', 'layer4.1', 'layer4.2']
         help="要删除的残差块，'all' 表示全部（默认 all）",
     )
     parser.add_argument(
-        "--calib-size", type=int, default=1024,
-        help="校准图像数量（默认 1024）",
+        "--calib-size", type=int, default=model_config.data.calib_num_samples,
+        help=f"校准图像数量（默认 {model_config.data.calib_num_samples}）",
     )
     parser.add_argument(
-        "--calib-batch-size", type=int, default=32,
-        help="校准 DataLoader 的 batch size（默认 32）",
+        "--calib-batch-size", type=int, default=model_config.data.calib_batch_size,
+        help=f"校准 DataLoader 的 batch size（默认 {model_config.data.calib_batch_size}）",
     )
     parser.add_argument(
-        "--epochs", type=int, default=3,
-        help="补偿器校准轮数（默认 3）",
+        "--epochs", type=int, default=model_config.train.epochs, 
+        help=f"补偿器校准轮数（默认 {model_config.train.epochs}）",
     )
     parser.add_argument(
-        "--lr", type=float, default=1e-3,
-        help="补偿器学习率（默认 1e-3）",
+        "--lr", type=float, default=model_config.train.lr, 
+        help=f"补偿器学习率（默认 {model_config.train.lr}）",
     )
     parser.add_argument(
         "--latency-reps", type=int, default=20,
@@ -96,7 +85,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="延迟测量预热次数（默认 5）",
     )
     return parser
-
 
 # ---------------------------------------------------------------------------
 # 日志初始化：同时写文件和 stdout
@@ -215,8 +203,10 @@ def main() -> None:
         bundle.train_dataset,
         calib_size=args.calib_size,
         batch_size=args.calib_batch_size,
-        num_workers=getattr(args, "num_workers", 0) or 0,
-        seed=args.seed if args.seed is not None else 42,
+        # 优先使用 args 中的 num_workers，如果没有则使用配置里的默认值
+        num_workers=getattr(args, "num_workers", model_config.hardware.num_workers), # <--- 修改
+        # 优先使用 args 中的 seed，如果没有则使用配置里的默认值
+        seed=args.seed if getattr(args, "seed", None) is not None else model_config.hardware.seed, # <--- 修改
     )
 
     # ── 1. full_residual baseline ──────────────────────────────────────────
@@ -273,11 +263,10 @@ def main() -> None:
         )
         model = setup["model"]
 
-        # 校准：冻结主干，只更新补偿器参数
         # linear1x1 参数量大，单独用小 lr 防止训飞
         effective_lr = VARIANT_LR.get(display_name, args.lr)
         if effective_lr is None:
-            effective_lr = 1e-3  # fallback default
+            effective_lr = model_config.train.lr
         logger.info(f"    校准中（{args.epochs} epochs, calib_size={args.calib_size}, lr={effective_lr}）...")
         history = calibrate_compensators(
             model,
