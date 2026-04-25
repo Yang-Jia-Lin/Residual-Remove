@@ -7,7 +7,7 @@
 """
 import argparse
 from Scripts.Utils.script_common import add_common_args, build_setup
-from Src.Training_and_Evaluation.finetune import finetune_head
+from Src.Training.finetune import finetune_head
 
 
 def main():

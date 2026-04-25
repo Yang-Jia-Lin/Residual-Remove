@@ -11,8 +11,8 @@ from pathlib import Path
 from Configs.paras import RESULT_DIR
 from Configs.paras import DATA_DIR
 from Configs.model_config import model_config
-from Src.ModelNets import build_model
-from Src.Training_and_Evaluation.finetune import load_finetuned
+from Src.ModelNets.builder import build_model
+from Src.Training.finetune import load_finetuned
 from Src.Utils.data_utils import make_dataloaders
 
 

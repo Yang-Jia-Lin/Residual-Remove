@@ -1,6 +1,9 @@
 """Src/Models_Evaluation/accuracy.py"""
 from collections.abc import Iterable
+import time
 import torch
+from torch import nn
+from torch.utils.data import DataLoader
 
 
 def extract_logits(output: torch.Tensor | dict) -> torch.Tensor:
@@ -29,3 +32,49 @@ def topk_accuracy(
         correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
         results.append(correct_k.mul_(100.0 / batch_size))
     return results
+
+
+def evaluate_model(
+    model: nn.Module,
+    dataloader: DataLoader,
+    device: torch.device,
+    mode: str = "full",
+    removed_blocks: list[str] | None = None,
+    max_batches: int | None = None,
+):
+    """在给定 dataloader 上评估模型，返回 loss / top1 / top5。"""
+    # 延迟导入以避免和 trainer 形成模块级循环依赖。
+    from Src.Training.trainer import EpochResult, _forward
+
+    criterion = nn.CrossEntropyLoss()
+    model.eval()
+    total_loss = 0.0
+    total_top1 = 0.0
+    total_top5 = 0.0
+    total_examples = 0
+    t_start = time.perf_counter()
+
+    with torch.no_grad():
+        for batch_idx, (images, targets) in enumerate(dataloader):
+            if max_batches is not None and batch_idx >= max_batches:
+                break
+
+            images = images.to(device)
+            targets = targets.to(device)
+            logits = extract_logits(_forward(model, images, mode, removed_blocks))
+            loss = criterion(logits, targets)
+            top1, top5 = topk_accuracy(logits, targets, topk=(1, min(5, logits.size(1))))
+
+            batch_size = images.size(0)
+            total_loss += float(loss.item()) * batch_size
+            total_top1 += float(top1.item()) * batch_size
+            total_top5 += float(top5.item()) * batch_size
+            total_examples += batch_size
+
+    n = max(total_examples, 1)
+    return EpochResult(
+        loss=total_loss / n,
+        top1=total_top1 / n,
+        top5=total_top5 / n,
+        elapsed_seconds=time.perf_counter() - t_start,
+    )

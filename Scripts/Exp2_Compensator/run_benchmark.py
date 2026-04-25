@@ -12,9 +12,9 @@ from Scripts.Utils.script_common import add_common_args, build_setup, resolve_re
 from Src.Metrics.flops import count_parameters, estimate_macs
 from Src.Metrics.latency import measure_latency
 from Src.Metrics.memory import measure_peak_memory
-from Src.Calibration.calibrate import calibrate_compensators
-from Src.Training_and_Evaluation.evaluator import evaluate_model
-from Src.Calibration.calibration_datasets import build_calibration_loader
+from Src.Training.calibrate import calibrate_compensators
+from Src.Metrics.accuracy import evaluate_model
+from Src.Utils.data_utils import build_calibration_loader
 from Src.Utils.runtime import write_csv
 
 

@@ -10,10 +10,10 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
 
-from Src.Metrics.accuracy import extract_logits, topk_accuracy
+from Src.Metrics.accuracy import evaluate_model, extract_logits, topk_accuracy
 
 
-# ── 训练结果的结构化容器 ────────────────────────────────────────────────────────
+# ── 训练结果结构 ───
 
 @dataclass
 class EpochResult:
@@ -34,7 +34,25 @@ class TrainHistory:
         return max((r.top1 for r in self.val), default=0.0)
 
 
-# ── 核心工具函数 ────────────────────────────────────────────────────────────────
+def feature_mse_loss(
+    student_features: dict[str, torch.Tensor],
+    teacher_features: dict[str, torch.Tensor],
+    layers: list[str],
+) -> torch.Tensor:
+    criterion = nn.MSELoss()
+    losses = []
+    for layer in layers:
+        if layer in student_features and layer in teacher_features:
+            losses.append(criterion(student_features[layer], teacher_features[layer]))
+    if not losses:
+        reference = next(iter(student_features.values()))
+        return reference.new_zeros(())
+    return torch.stack(losses).mean()
+
+
+def logit_mse_loss(student_logits: torch.Tensor, teacher_logits: torch.Tensor) -> torch.Tensor:
+    return nn.functional.mse_loss(student_logits, teacher_logits)
+
 
 def _forward(
     model: nn.Module,
@@ -48,7 +66,7 @@ def _forward(
     return model(images)
 
 
-# ── 单 epoch 训练 ───────────────────────────────────────────────────────────────
+# ── 单 epoch 训练 ───
 def train_one_epoch(
     model: nn.Module,
     dataloader: DataLoader,
@@ -58,8 +76,7 @@ def train_one_epoch(
     mode: str = "full",
     removed_blocks: list[str] | None = None,
     max_batches: int | None = None,
-    # 可选的 batch 级别回调，比如用于打印进度
-    on_batch_end: Callable[[int, float], None] | None = None,
+    on_batch_end: Callable[[int, float], None] | None = None, # 可选的 batch 级别回调，比如用于打印进度
 ) -> EpochResult:
     """运行一个完整的训练 epoch，返回该 epoch 的平均指标。"""
     model.train()
@@ -101,7 +118,7 @@ def train_one_epoch(
     )
 
 
-# ── 完整训练流程 ────────────────────────────────────────────────────────────────
+# ── 完整训练 ───
 
 def train_model(
     model: nn.Module,
@@ -117,18 +134,7 @@ def train_model(
     checkpoint_path: Path | str | None = None,
     verbose: bool = True,
 ) -> TrainHistory:
-    """完整的训练 + 验证循环。
-
-    每个 epoch 结束后自动在 val_loader 上评估，并保存到目前为止
-    val top1 最高的 checkpoint（best model checkpoint 策略）。
-
-    Args:
-        checkpoint_path: 如果提供，会在每次 val top1 刷新最优时保存权重。
-                         文件名本身即为保存路径，例如：
-                         "_logs/checkpoints/resnet50_cifar100/best.pth"
-    """
-    from Src.Training_and_Evaluation.evaluator import evaluate_model
-
+    """完整的训练 + 验证"""
     criterion = criterion or nn.CrossEntropyLoss()
     history = TrainHistory()
     best_val_top1 = 0.0

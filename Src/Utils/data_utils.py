@@ -8,20 +8,16 @@
         CIFAR100/
 """
 import json
-import os
-import io
+import random
 from collections.abc import Sized
 from dataclasses import dataclass
 from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, Dataset, Subset
 
-try:
-    from torchvision import datasets as tv_datasets
-    from torchvision import transforms as tv_transforms
-    _HAS_TORCHVISION = True
-except ImportError:
-    _HAS_TORCHVISION = False
+from torchvision import datasets as tv_datasets
+from torchvision import transforms as tv_transforms
+
 
 
 # ── 归一化统计量 ──────────────────────────────────────────────────────────────
@@ -77,8 +73,6 @@ class SyntheticDataset(Dataset):
 # ── 内部辅助 ──────────────────────────────────────────────────────────────────
 def _build_transform(dataset_name: str, image_size: int, train: bool):
     """返回对应数据集和阶段的预处理流水线。"""
-    if not _HAS_TORCHVISION:
-        return None
     mean, std = _NORM_STATS.get(dataset_name.lower(), _NORM_STATS["imagenet"])
     if train:
         return tv_transforms.Compose([
@@ -220,8 +214,6 @@ def _load_cifar(
     name: str, data_root: Path, train: bool, image_size: int
 ) -> Dataset | None:
     """内部调用：加载 CIFAR10/100，路径不存在则返回 None。"""
-    if not _HAS_TORCHVISION:
-        return None
     subdir = {"cifar10": "CIFAR10", "cifar100": "CIFAR100"}[name]
     root   = data_root / subdir
     if not root.exists():
@@ -294,36 +286,23 @@ def make_dataloaders(
     )
 
 
-# ── 冒烟测试 ──────────────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    from Configs.paras import DATA_DIR
+def sample_calibration_subset(dataset: Dataset, calib_size: int, seed: int = 42) -> Dataset:
+    if not isinstance(dataset, Sized):
+        raise TypeError("dataset must implement __len__")
+    if calib_size <= 0 or calib_size >= len(dataset):
+        return dataset
+    rng = random.Random(seed)
+    indices = list(range(len(dataset)))
+    rng.shuffle(indices)
+    return Subset(dataset, indices[:calib_size])
 
-    # 首次使用前生成索引（已有则跳过）
-    split_file = DATA_DIR / "ImageNet100" / "split_indices.json"
-    if not split_file.exists():
-        print("未找到切分索引，正在生成...")
-        generate_split(DATA_DIR)
-    else:
-        verify_split(DATA_DIR)
 
-    # 加载数据集
-    bundle = make_dataloaders(
-        dataset_name         = "imagenet100",
-        data_root            = DATA_DIR,
-        batch_size           = 32,
-        image_size           = 224,
-        num_workers          = 4,
-        synthetic_if_missing = True,   # 服务器上没数据时回退合成，本地调试用
-    )
-
-    print(f"\nDatasetBundle:")
-    print(f"  source      : {bundle.source}")
-    print(f"  num_classes : {bundle.num_classes}")
-    print(f"  训练批次数   : {len(bundle.train_loader)}")
-    print(f"  验证批次数   : {len(bundle.val_loader)}")
-
-    images, labels = next(iter(bundle.train_loader))
-    print(f"\n第一个 batch：")
-    print(f"  images : {images.shape}  {images.dtype}")
-    print(f"  labels : {labels.shape}  [{labels.min()}, {labels.max()}]")
-    print("\n✓ datasets.py 冒烟测试通过。")
+def build_calibration_loader(
+    dataset: Dataset,
+    calib_size: int,
+    batch_size: int,
+    num_workers: int = 0,
+    seed: int = 42,
+) -> DataLoader:
+    subset = sample_calibration_subset(dataset, calib_size=calib_size, seed=seed)
+    return DataLoader(subset, batch_size=batch_size, shuffle=True, num_workers=num_workers)

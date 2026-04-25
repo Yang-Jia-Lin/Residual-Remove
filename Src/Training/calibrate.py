@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from torch.nn.utils.clip_grad import clip_grad_norm_
 
-from Src.Training_and_Evaluation.loss import feature_mse_loss, logit_mse_loss
+from Src.Training.trainer import feature_mse_loss, logit_mse_loss
 
 
 def calibrate_compensators(
