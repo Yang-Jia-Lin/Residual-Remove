@@ -1,8 +1,9 @@
 """Src/Models_Training/calibrate.py"""
 import torch
 from torch import nn
+from torch.nn.utils.clip_grad import clip_grad_norm_
 
-from Src.Models_Training.loss import feature_mse_loss, logit_mse_loss
+from Src.Training_and_Evaluation.loss import feature_mse_loss, logit_mse_loss
 
 
 def calibrate_compensators(
@@ -61,7 +62,7 @@ def calibrate_compensators(
             optimizer.zero_grad()
             loss.backward()
             if grad_clip is not None:
-                nn.utils.clip_grad_norm_(params, max_norm=grad_clip)
+                clip_grad_norm_(params, max_norm=grad_clip)
             optimizer.step()
 
             total_loss += float(loss.item())

@@ -2,9 +2,9 @@
     加载原始模型并注入补偿器（所有脚本的入口）"""
 import copy
 from torch import nn
-from Src.Models_Nets.injector import inject, mobilenet_block_specs, resnet_block_specs
-from Src.Models_Nets.origin.mobilenet import build_mobilenet_v2
-from Src.Models_Nets.origin.resnet import build_resnet
+from Src.ModelNets.injector import inject, mobilenet_block_specs, resnet_block_specs
+from Src.ModelNets.origin.mobilenet import build_mobilenet_v2
+from Src.ModelNets.origin.resnet import build_resnet
 
 
 def _normalize_arch(arch: str | None, model_name: str | None) -> str:
@@ -80,7 +80,6 @@ def get_block_names(model: nn.Module) -> list[str]:
 
 
 if __name__ == "__main__":
-    from models.builder import build_model, get_block_names
     model1 = build_model("resnet50", num_classes=1000, pretrained=True)
     model2 = build_model("resnet50", pretrained=True, compensator_name="lora", compensator_rank=16)
     model3 = build_model("resnet50", pretrained=True, compensator_name="affine")

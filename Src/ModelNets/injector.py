@@ -4,9 +4,9 @@ from typing import Any, Callable, Sequence
 import torch
 from torch import nn
 
-from Src.Models_Nets.compensators import BaseCompensator, build_compensator, freeze_backbone_except_compensators, trainable_compensator_parameters
-from Src.Models_Nets.origin.mobilenet import InvertedResidual
-from Src.Models_Nets.origin.resnet import BasicBlock, Bottleneck
+from Src.ModelNets.compensators import BaseCompensator, build_compensator, freeze_backbone_except_compensators, trainable_compensator_parameters
+from Src.ModelNets.origin.mobilenet import InvertedResidual
+from Src.ModelNets.origin.resnet import BasicBlock, Bottleneck
 
 
 @dataclass(frozen=True)

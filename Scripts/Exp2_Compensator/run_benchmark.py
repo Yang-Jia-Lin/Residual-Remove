@@ -8,13 +8,13 @@ from pathlib import Path
 
 from Configs.paras import RESULT_DIR_2
 from Configs.model_config import model_config
-from Scripts.Utils.common import add_common_args, build_setup, resolve_removed_blocks
-from Src.Models_Evaluation.flops import count_parameters, estimate_macs
-from Src.Models_Evaluation.latency import measure_latency
-from Src.Models_Evaluation.memory import measure_peak_memory
-from Src.Models_Training.calibrate import calibrate_compensators
-from Src.Models_Training.trainer import evaluate_model
-from Src.Utils.calibration import build_calibration_loader
+from Scripts.Utils.script_common import add_common_args, build_setup, resolve_removed_blocks
+from Src.Metrics.flops import count_parameters, estimate_macs
+from Src.Metrics.latency import measure_latency
+from Src.Metrics.memory import measure_peak_memory
+from Src.Calibration.calibrate import calibrate_compensators
+from Src.Training_and_Evaluation.evaluator import evaluate_model
+from Src.Calibration.calibration_datasets import build_calibration_loader
 from Src.Utils.runtime import write_csv
 
 

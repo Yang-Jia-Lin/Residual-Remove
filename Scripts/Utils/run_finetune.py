@@ -6,8 +6,8 @@
        python -m Scripts.Utils.run_finetune --model resnet18 --epochs 5 --lr 5e-4
 """
 import argparse
-from Scripts.Utils.common import add_common_args, build_setup
-from Src.Models_Training.finetune import finetune_head
+from Scripts.Utils.script_common import add_common_args, build_setup
+from Src.Training_and_Evaluation.finetune import finetune_head
 
 
 def main():

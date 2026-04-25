@@ -11,7 +11,7 @@ from datetime import datetime
 
 from Configs.paras import RESULT_DIR_1
 from Configs.simulate_config import simulate_config  # <-- 新增导入
-from Scripts.Utils.common import add_common_args, build_setup, get_probe_batch
+from Scripts.Utils.script_common import add_common_args, build_setup, get_probe_batch
 from Src.Collab_System.bandwidth_sim import estimate_transfer_time_ms, saved_transfer_ratio
 from Src.Utils.runtime import tensor_bytes, write_csv
 

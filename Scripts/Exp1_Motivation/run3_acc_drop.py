@@ -6,8 +6,8 @@ from pathlib import Path
 from datetime import datetime
 
 from Configs.paras import RESULT_DIR_1
-from Scripts.Utils.common import add_common_args, build_setup
-from Src.Models_Training.trainer import evaluate_model
+from Scripts.Utils.script_common import add_common_args, build_setup
+from Src.Training_and_Evaluation.evaluator import evaluate_model
 from Src.Utils.runtime import write_csv
 
 
