@@ -9,7 +9,7 @@ from pathlib import Path
 from Configs.paras import RESULT_DIR_2
 from Configs.model_config import model_config
 from Scripts.Utils.script_common import add_common_args, build_setup, resolve_removed_blocks
-from Src.Metrics.flops import count_parameters, estimate_macs
+from Src.Metrics.static_cost import count_parameters, estimate_macs
 from Src.Metrics.latency import measure_latency
 from Src.Metrics.memory import measure_peak_memory
 from Src.Training.calibrate import calibrate_compensators
