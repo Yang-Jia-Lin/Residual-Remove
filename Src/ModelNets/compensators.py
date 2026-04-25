@@ -5,36 +5,33 @@ from torch import nn
 
 class BaseCompensator(nn.Module):
     is_compensator = True
-    fusible = False
 
 
 class IdentityCompensator(BaseCompensator):
-    fusible = True
-
     def __init__(self, channels: int = 0, rank: int = 16, activation: str = "gelu") -> None:
         super().__init__()
+        del channels, rank, activation
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x
 
 
 class AffineCompensator(BaseCompensator):
-    fusible = True
     def __init__(self, channels: int, rank: int = 16, activation: str = "gelu") -> None:
         super().__init__()
+        del rank, activation
         self.gamma = nn.Parameter(torch.ones(1, channels, 1, 1))
-        self.beta  = nn.Parameter(torch.zeros(1, channels, 1, 1))
+        self.beta = nn.Parameter(torch.zeros(1, channels, 1, 1))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.gamma * x + self.beta
 
 
 class Linear1x1Compensator(BaseCompensator):
-    fusible = True
     def __init__(self, channels: int, rank: int = 16, activation: str = "gelu") -> None:
         super().__init__()
+        del rank, activation
         self.proj = nn.Conv2d(channels, channels, kernel_size=1, bias=True)
-        # zero-init：初始 delta = proj(x) = 0，forward = x + 0 = x
         nn.init.zeros_(self.proj.weight)
         if self.proj.bias is not None:
             nn.init.zeros_(self.proj.bias)
@@ -46,12 +43,12 @@ class Linear1x1Compensator(BaseCompensator):
 class LoRACompensator(BaseCompensator):
     def __init__(self, channels: int, rank: int = 16, activation: str = "gelu") -> None:
         super().__init__()
-        rank = max(1, min(rank, channels))
+        del activation
+        rank = _clamp_rank(rank, channels)
         self.down = nn.Conv2d(channels, rank, kernel_size=1, bias=False)
-        self.up   = nn.Conv2d(rank, channels, kernel_size=1, bias=False)
-        # down：kaiming 均匀初始化，提供多样的投影方向
+        self.up = nn.Conv2d(rank, channels, kernel_size=1, bias=False)
+
         nn.init.kaiming_uniform_(self.down.weight, a=5 ** 0.5)
-        # up：zero-init，保证初始 delta = up(down(x)) = 0
         nn.init.zeros_(self.up.weight)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -59,26 +56,28 @@ class LoRACompensator(BaseCompensator):
 
 
 class AdapterCompensator(BaseCompensator):
-    fusible = False
-
     def __init__(self, channels: int, rank: int = 16, activation: str = "gelu") -> None:
         super().__init__()
-        rank = max(1, min(rank, channels))
-        self.down = nn.Conv2d(channels, rank, kernel_size=1, bias=True)
-        self.up   = nn.Conv2d(rank, channels, kernel_size=1, bias=True)
-        self.act  = _build_activation(activation)
+        rank = _clamp_rank(rank, channels)
 
-        # down：kaiming 初始化，bias 初始化为小值避免 dead init
+        self.down = nn.Conv2d(channels, rank, kernel_size=1, bias=True)
+        self.up = nn.Conv2d(rank, channels, kernel_size=1, bias=True)
+        self.act = _build_activation(activation)
+
         nn.init.kaiming_uniform_(self.down.weight, a=5 ** 0.5)
         if self.down.bias is not None:
             nn.init.uniform_(self.down.bias, -0.01, 0.01)
-        # up：zero-init，保证初始 delta = up(act(down(x))) = 0
+
         nn.init.zeros_(self.up.weight)
         if self.up.bias is not None:
             nn.init.zeros_(self.up.bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x + self.up(self.act(self.down(x)))
+
+
+def _clamp_rank(rank: int, channels: int) -> int:
+    return max(1, min(rank, channels))
 
 
 def _build_activation(name: str) -> nn.Module:
@@ -99,10 +98,9 @@ def build_compensator(
     activation: str = "gelu",
 ) -> BaseCompensator:
     key = (name or "identity").lower()
+
     if key in {"identity", "none"}:
         return IdentityCompensator(channels=channels, rank=rank, activation=activation)
-    # if key == "scalar":
-    #     return ScalarCompensator(channels=channels, rank=rank, activation=activation)
     if key == "affine":
         return AffineCompensator(channels=channels, rank=rank, activation=activation)
     if key in {"linear1x1", "linear_1x1", "linear"}:
@@ -111,6 +109,7 @@ def build_compensator(
         return LoRACompensator(channels=channels, rank=rank, activation=activation)
     if key == "adapter":
         return AdapterCompensator(channels=channels, rank=rank, activation=activation)
+
     raise ValueError(f"Unsupported compensator: {name}")
 
 

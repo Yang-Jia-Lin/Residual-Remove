@@ -1,7 +1,4 @@
-""" Src/Models_Nets/origin/resnet.py
-    官方 ResNet 系列模型"""
-
-from __future__ import annotations
+"""Src/Models_Nets/origin/resnet.py"""
 from typing import Any
 from torch import nn
 from torchvision.models import (
@@ -23,7 +20,7 @@ _RESNET_BUILDERS: dict[int, tuple[Any, Any]] = {
 
 
 def build_resnet(depth: int, num_classes: int = 1000, pretrained: bool = False) -> ResNet:
-    """构建官方 Torchvision ResNet，并可选地加载预训练权重。"""
+    """构建官方 Torchvision ResNet，可选加载预训练权重"""
 
     if depth not in _RESNET_BUILDERS:
         raise ValueError(f"Unsupported ResNet depth: {depth}")
@@ -45,13 +42,9 @@ __all__ = ["BasicBlock", "Bottleneck", "ResNet", "build_resnet"]
 
 
 if __name__ == "__main__":
-    from models.origin.resnet import build_resnet
-    
     # 从零初始化，自己训练
     model = build_resnet(depth=50, num_classes=1000, pretrained=False)
-    
     # 加载 ImageNet 预训练权重
     model = build_resnet(depth=50, num_classes=1000, pretrained=True)
-
     # 迁移到 CIFAR-100
     model = build_resnet(depth=18, num_classes=100, pretrained=True)
