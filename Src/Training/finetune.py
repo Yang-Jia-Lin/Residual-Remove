@@ -1,7 +1,7 @@
 """Src/Models_Training/finetune.py"""
+
 import torch
 import torch.nn as nn
-from pathlib import Path
 from torch.utils.data import DataLoader
 
 from Configs.paras import RESULT_DIR
@@ -27,7 +27,8 @@ def finetune_head(
 
     optimizer = torch.optim.Adam(
         filter(lambda p: p.requires_grad, model.parameters()),
-        lr=lr, weight_decay=weight_decay,
+        lr=lr,
+        weight_decay=weight_decay,
     )
     criterion = nn.CrossEntropyLoss()
     model.to(device)
@@ -45,16 +46,18 @@ def finetune_head(
             loss.backward()
             optimizer.step()
             total_loss += loss.item() * labels.size(0)
-            correct   += (model(images).argmax(1) == labels).sum().item()
-            total     += labels.size(0)
+            correct += (model(images).argmax(1) == labels).sum().item()
+            total += labels.size(0)
 
         # ── 验证 ──────────────────────────────────────────────────────
         val_acc = _evaluate(model, val_loader, device)
-        print(f"Epoch {epoch}/{epochs}  "
-              f"loss={total_loss/total:.4f}  val_acc={val_acc:.2f}%")
+        print(
+            f"Epoch {epoch}/{epochs}  "
+            f"loss={total_loss / total:.4f}  val_acc={val_acc:.2f}%"
+        )
 
         if val_acc > best_acc:
-            best_acc   = val_acc
+            best_acc = val_acc
             best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
     # 保存最优 checkpoint
@@ -64,7 +67,7 @@ def finetune_head(
     torch.save({"state_dict": best_state, "best_acc": best_acc}, ckpt_path)
     print(f"\n✅ 最优 val_acc={best_acc:.2f}%，checkpoint 已保存：{ckpt_path}")
 
-    model.load_state_dict(best_state) # type: ignore
+    model.load_state_dict(best_state)  # type: ignore
     return model
 
 
@@ -75,7 +78,7 @@ def _evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> flo
     for images, labels in loader:
         images, labels = images.to(device), labels.to(device)
         correct += (model(images).argmax(1) == labels).sum().item()
-        total   += labels.size(0)
+        total += labels.size(0)
     return 100.0 * correct / total
 
 

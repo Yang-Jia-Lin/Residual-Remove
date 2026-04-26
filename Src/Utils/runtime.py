@@ -1,11 +1,18 @@
 """Src/Utils/runtime.py"""
+
 import csv
 import random
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import torch
+
+
+def extract_logits(output: torch.Tensor | dict) -> torch.Tensor:
+    """从模型输出中提取 logits 张量"""
+    if isinstance(output, dict):
+        return output["logits"]
+    return output
 
 
 def set_seed(seed: int) -> None:

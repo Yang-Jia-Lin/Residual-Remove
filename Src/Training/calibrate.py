@@ -1,6 +1,6 @@
 """Src/Models_Training/calibrate.py"""
+
 import torch
-from torch import nn
 from torch.nn.utils.clip_grad import clip_grad_norm_
 
 from Src.Training.trainer import feature_mse_loss, logit_mse_loss
@@ -19,8 +19,12 @@ def calibrate_compensators(
     grad_clip: float | None = 1.0,
     max_batches: int | None = None,
 ) -> dict[str, list[float]]:
-    if not hasattr(model, "freeze_backbone") or not hasattr(model, "compensator_parameters"):
-        raise AttributeError("Model must expose freeze_backbone() and compensator_parameters().")
+    if not hasattr(model, "freeze_backbone") or not hasattr(
+        model, "compensator_parameters"
+    ):
+        raise AttributeError(
+            "Model must expose freeze_backbone() and compensator_parameters()."
+        )
 
     removed_blocks = removed_blocks or list(model.get_block_names())
     model.to(device)
@@ -57,7 +61,9 @@ def calibrate_compensators(
                     layers=removed_blocks,
                 )
             if logit_loss_weight > 0:
-                loss = loss + logit_loss_weight * logit_mse_loss(student["logits"], teacher["logits"])
+                loss = loss + logit_loss_weight * logit_mse_loss(
+                    student["logits"], teacher["logits"]
+                )
 
             optimizer.zero_grad()
             loss.backward()

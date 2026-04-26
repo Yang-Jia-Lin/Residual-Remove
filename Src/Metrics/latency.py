@@ -1,23 +1,26 @@
-""" Src/Models_Evaluation/latency.py
-    1. 预热（warmup）：GPU 的 JIT 编译和 CUDA kernel 初始化会在前几次推理中发生
-    2. CUDA 同步：CUDA 的操作是异步的，须用 torch.cuda.synchronize() 等待 GPU 真正跑完
-    3. 多次重复取均值：单次测量噪声很大，重复 20~50 次取均值稳定
+"""Src/Models_Evaluation/latency.py
+1. 预热（warmup）：GPU 的 JIT 编译和 CUDA kernel 初始化会在前几次推理中发生
+2. CUDA 同步：CUDA 的操作是异步的，须用 torch.cuda.synchronize() 等待 GPU 真正跑完
+3. 多次重复取均值：单次测量噪声很大，重复 20~50 次取均值稳定
 """
-import time
+
 import statistics
+import time
 from dataclasses import dataclass
 from typing import Any
+
 import torch
 
 
 @dataclass
 class LatencyResult:
-    """单次延迟测量的结果。"""
-    mean_ms:   float   # 平均延迟（毫秒）
-    min_ms:    float   # 最小延迟（毫秒，代表硬件上限）
-    max_ms:    float   # 最大延迟（毫秒）
-    std_ms:    float   # 标准差（衡量测量稳定性）
-    device:    str
+    """单次延迟结果"""
+
+    mean_ms: float  # 平均延迟（毫秒）
+    min_ms: float  # 最小延迟（毫秒，硬件上限）
+    max_ms: float  # 最大延迟（毫秒）
+    std_ms: float  # 标准差
+    device: str
 
     def __str__(self) -> str:
         return (
@@ -31,9 +34,10 @@ class LatencyResult:
 @dataclass
 class LatencyComparison:
     """full mode vs plain mode 延迟对比"""
-    full:        LatencyResult
-    plain:       LatencyResult
-    speedup:     float   # plain / full 的加速比，> 1 说明 plain 更快
+
+    full: LatencyResult
+    plain: LatencyResult
+    speedup: float  # plain / full 的加速比，> 1 说明 plain 更快
 
     def __str__(self) -> str:
         return (
@@ -74,23 +78,29 @@ def measure_latency(
             timings.append((time.perf_counter() - t0) * 1000.0)
 
     return LatencyResult(
-        mean_ms = sum(timings) / len(timings),
-        min_ms  = min(timings),
-        max_ms  = max(timings),
-        std_ms  = statistics.stdev(timings),
-        device  = str(device),
+        mean_ms=sum(timings) / len(timings),
+        min_ms=min(timings),
+        max_ms=max(timings),
+        std_ms=statistics.stdev(timings),
+        device=str(device),
     )
 
 
 def compare_latency(
-    full_model:  torch.nn.Module,
+    full_model: torch.nn.Module,
     plain_model: torch.nn.Module,
-    sample:      torch.Tensor,
+    sample: torch.Tensor,
     repetitions: int = 50,
-    warmup:      int = 10,
+    warmup: int = 10,
     **forward_kwargs: Any,
 ) -> LatencyComparison:
-    full_result  = measure_latency(full_model,  sample, repetitions, warmup, **forward_kwargs)
-    plain_result = measure_latency(plain_model, sample, repetitions, warmup, **forward_kwargs)
-    speedup = full_result.mean_ms / plain_result.mean_ms if plain_result.mean_ms > 0 else 1.0
+    full_result = measure_latency(
+        full_model, sample, repetitions, warmup, **forward_kwargs
+    )
+    plain_result = measure_latency(
+        plain_model, sample, repetitions, warmup, **forward_kwargs
+    )
+    speedup = (
+        full_result.mean_ms / plain_result.mean_ms if plain_result.mean_ms > 0 else 1.0
+    )
     return LatencyComparison(full=full_result, plain=plain_result, speedup=speedup)

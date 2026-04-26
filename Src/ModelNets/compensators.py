@@ -1,4 +1,5 @@
 """Src/Models_Nets/compensators.py"""
+
 import torch
 from torch import nn
 
@@ -8,7 +9,9 @@ class BaseCompensator(nn.Module):
 
 
 class IdentityCompensator(BaseCompensator):
-    def __init__(self, channels: int = 0, rank: int = 16, activation: str = "gelu") -> None:
+    def __init__(
+        self, channels: int = 0, rank: int = 16, activation: str = "gelu"
+    ) -> None:
         super().__init__()
         del channels, rank, activation
 
@@ -48,7 +51,7 @@ class LoRACompensator(BaseCompensator):
         self.down = nn.Conv2d(channels, rank, kernel_size=1, bias=False)
         self.up = nn.Conv2d(rank, channels, kernel_size=1, bias=False)
 
-        nn.init.kaiming_uniform_(self.down.weight, a=5 ** 0.5)
+        nn.init.kaiming_uniform_(self.down.weight, a=5**0.5)
         nn.init.zeros_(self.up.weight)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -64,7 +67,7 @@ class AdapterCompensator(BaseCompensator):
         self.up = nn.Conv2d(rank, channels, kernel_size=1, bias=True)
         self.act = _build_activation(activation)
 
-        nn.init.kaiming_uniform_(self.down.weight, a=5 ** 0.5)
+        nn.init.kaiming_uniform_(self.down.weight, a=5**0.5)
         if self.down.bias is not None:
             nn.init.uniform_(self.down.bias, -0.01, 0.01)
 

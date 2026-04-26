@@ -1,4 +1,5 @@
 """Src/Models_Training/trainer.py"""
+
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -10,14 +11,15 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
 
-from Src.Metrics.accuracy import evaluate_model, extract_logits, topk_accuracy
+from Src.Metrics.accuracy import evaluate_model, topk_accuracy
+from Src.Utils.runtime import extract_logits
 
 
 # ── 训练结果结构 ───
-
 @dataclass
 class EpochResult:
     """单个 epoch 的训练或验证指标快照。"""
+
     loss: float
     top1: float
     top5: float
@@ -27,8 +29,9 @@ class EpochResult:
 @dataclass
 class TrainHistory:
     """完整训练过程的指标历史，便于后续画图。"""
+
     train: list[EpochResult] = field(default_factory=list)
-    val:   list[EpochResult] = field(default_factory=list)
+    val: list[EpochResult] = field(default_factory=list)
 
     def best_val_top1(self) -> float:
         return max((r.top1 for r in self.val), default=0.0)
@@ -50,7 +53,9 @@ def feature_mse_loss(
     return torch.stack(losses).mean()
 
 
-def logit_mse_loss(student_logits: torch.Tensor, teacher_logits: torch.Tensor) -> torch.Tensor:
+def logit_mse_loss(
+    student_logits: torch.Tensor, teacher_logits: torch.Tensor
+) -> torch.Tensor:
     return nn.functional.mse_loss(student_logits, teacher_logits)
 
 
@@ -76,7 +81,8 @@ def train_one_epoch(
     mode: str = "full",
     removed_blocks: list[str] | None = None,
     max_batches: int | None = None,
-    on_batch_end: Callable[[int, float], None] | None = None, # 可选的 batch 级别回调，比如用于打印进度
+    on_batch_end: Callable[[int, float], None]
+    | None = None,  # 可选的 batch 级别回调，比如用于打印进度
 ) -> EpochResult:
     """运行一个完整的训练 epoch，返回该 epoch 的平均指标。"""
     model.train()
@@ -90,7 +96,7 @@ def train_one_epoch(
         if max_batches is not None and batch_idx >= max_batches:
             break
 
-        images  = images.to(device)
+        images = images.to(device)
         targets = targets.to(device)
 
         optimizer.zero_grad()
@@ -120,6 +126,7 @@ def train_one_epoch(
 
 # ── 完整训练 ───
 
+
 def train_model(
     model: nn.Module,
     train_loader: DataLoader,
@@ -145,15 +152,23 @@ def train_model(
     for epoch in range(1, num_epochs + 1):
         # ── 训练 ──
         train_result = train_one_epoch(
-            model, train_loader, criterion, optimizer, device,
-            mode=mode, removed_blocks=removed_blocks,
+            model,
+            train_loader,
+            criterion,
+            optimizer,
+            device,
+            mode=mode,
+            removed_blocks=removed_blocks,
         )
         history.train.append(train_result)
 
         # ── 验证 ──
         val_result = evaluate_model(
-            model, val_loader, device,
-            mode=mode, removed_blocks=removed_blocks,
+            model,
+            val_loader,
+            device,
+            mode=mode,
+            removed_blocks=removed_blocks,
         )
         history.val.append(val_result)
 

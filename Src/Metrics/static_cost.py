@@ -1,28 +1,31 @@
-"""Src/Models_Evaluation/flops.py"""
+"""Src/Metrics/static_cost.py
+计算模型的静态计算代价指标（参数量、MACs、参数内存占用）
+"""
+
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Generator
+
 import torch
 from torch import nn
 
 
 @dataclass
-class ModelCost:
-    """模型计算代价的结构化摘要。"""
-    total_params:       int    # 总参数量（包含补偿器）
-    backbone_params:    int    # 主干参数量（不含补偿器）
-    compensator_params: int    # 补偿器参数量
-    macs_per_sample:    int    # 单张图片的 MACs
-    param_mb:           float  # 参数静态内存估算（MB，float32）
+class ModelStaticCost:
+    total_params: int  # 总参数量（包含补偿器）
+    backbone_params: int  # 主干参数量（不含补偿器）
+    compensator_params: int  # 补偿器参数量
+    macs_per_sample: int  # 单张图片的 MACs
+    param_mb: float  # 参数静态内存估算（MB，float32）
 
     def __str__(self) -> str:
         def _fmt(n: int) -> str:
             if n >= 1_000_000_000:
-                return f"{n/1e9:.2f}G"
+                return f"{n / 1e9:.2f}G"
             if n >= 1_000_000:
-                return f"{n/1e6:.2f}M"
+                return f"{n / 1e6:.2f}M"
             if n >= 1_000:
-                return f"{n/1e3:.2f}K"
+                return f"{n / 1e3:.2f}K"
             return str(n)
 
         return (
@@ -35,7 +38,7 @@ class ModelCost:
 
 @contextmanager
 def _eval_mode(model: nn.Module) -> Generator[None, None, None]:
-    """临时切换到 eval 模式，退出时恢复原始状态。"""
+    """临时切换到 eval 模式，退出时恢复原始状态"""
     was_training = model.training
     model.eval()
     try:
@@ -51,7 +54,7 @@ def _forward_hooks(
     conv_hook,
     linear_hook,
 ) -> Generator[None, None, None]:
-    """注册 forward hook，保证退出时一定被清理，即使推理中途抛异常。"""
+    """注册 forward hook，退出时自动移除"""
     handles = [
         module.register_forward_hook(
             conv_hook if isinstance(module, nn.Conv2d) else linear_hook
@@ -70,18 +73,14 @@ def _forward_hooks(
 # 参数量统计
 # ---------------------------------------------------------------------------
 
+
 def count_parameters(model: nn.Module) -> int:
-    """统计模型所有参数的总数量。"""
+    """统计模型所有参数的总数"""
     return sum(p.numel() for p in model.parameters())
 
 
 def count_compensator_parameters(model: nn.Module) -> int:
-    """统计补偿器参数数量（通过 is_compensator 标记识别）。
-
-    用 id() 去重，避免嵌套补偿器模块时子模块参数被重复计入。
-    标记约定：只在最外层补偿器模块上设置 is_compensator=True。
-    与 freeze_backbone_except_compensators 使用相同的识别机制。
-    """
+    """统计补偿器参数量（通过 is_compensator 标记）"""
     seen: set[int] = set()
     total = 0
     for module in model.modules():
@@ -94,19 +93,16 @@ def count_compensator_parameters(model: nn.Module) -> int:
 
 
 # ---------------------------------------------------------------------------
-# MACs 统计
+# MACs(Multiply-Accumulate Operations) 乘加运算量统计
 # ---------------------------------------------------------------------------
+
 
 def estimate_macs(
     model: nn.Module,
     sample: torch.Tensor,
     **forward_kwargs,
 ) -> int:
-    """通过 forward hook 统计单张图片的 MACs。
-
-    只统计 Conv2d 和 Linear，BN/ReLU/Pooling 的计算量相对极小忽略不计。
-    sample 可以是 batch，函数自动除以 batch_size 换算为单张图片的 MACs。
-    """
+    """通过 forward hook 统计单张图片的 MACs"""
     batch_size = sample.size(0)
     total_macs = 0
 
@@ -136,25 +132,26 @@ def estimate_macs(
 
 
 # ---------------------------------------------------------------------------
-# 综合入口
+# 总入口
 # ---------------------------------------------------------------------------
+
 
 def analyze_model(
     model: nn.Module,
     sample: torch.Tensor,
     **forward_kwargs,
-) -> ModelCost:
-    """一次性计算所有静态代价指标，返回结构化的 ModelCost"""
-    total    = count_parameters(model)
-    comp     = count_compensator_parameters(model)
+) -> ModelStaticCost:
+    """一次性计算所有静态代价指标，返回结构化的 ModelStaticCost"""
+    total = count_parameters(model)
+    comp = count_compensator_parameters(model)
     backbone = total - comp
-    macs     = estimate_macs(model, sample, **forward_kwargs)
-    param_mb = total * 4 / (1024 ** 2)   # float32 = 4 bytes / param
+    macs = estimate_macs(model, sample, **forward_kwargs)
+    param_mb = total * 4 / (1024**2)  # float32 = 4 bytes / param
 
-    return ModelCost(
-        total_params       = total,
-        backbone_params    = backbone,
-        compensator_params = comp,
-        macs_per_sample    = macs,
-        param_mb           = param_mb,
+    return ModelStaticCost(
+        total_params=total,
+        backbone_params=backbone,
+        compensator_params=comp,
+        macs_per_sample=macs,
+        param_mb=param_mb,
     )

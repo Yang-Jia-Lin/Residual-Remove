@@ -1,35 +1,42 @@
 """Src/Models_Nets/builder.py"""
-import torch
-from torch import nn
+
 from dataclasses import dataclass
 from typing import Any, Callable, Sequence
 
-from Src.ModelNets.origin.mobilenet import build_mobilenet_v2, InvertedResidual
-from Src.ModelNets.origin.resnet import BasicBlock, Bottleneck, build_resnet
+import torch
+from torch import nn
+
 from Src.ModelNets.compensators import (
     BaseCompensator,
     build_compensator,
     freeze_backbone_except_compensators,
     trainable_compensator_parameters,
 )
+from Src.ModelNets.origin.mobilenet import InvertedResidual, build_mobilenet_v2
+from Src.ModelNets.origin.resnet import BasicBlock, Bottleneck, build_resnet
 
 
 @dataclass(frozen=True)
 class BlockSpec:
     """模块类型"""
+
     block_class: type[nn.Module]
     get_channels: Callable[[nn.Module], int]
     wrap: Callable[[nn.Module, BaseCompensator], "PatchedBlock"]
 
 
-def _postprocess_output(original_block: nn.Module, tensor: torch.Tensor) -> torch.Tensor:
+def _postprocess_output(
+    original_block: nn.Module, tensor: torch.Tensor
+) -> torch.Tensor:
     """对残差分支输出进行后处理"""
     if isinstance(original_block, (BasicBlock, Bottleneck)):
         return original_block.relu(tensor)
     return tensor
 
 
-def _split_forward(original_block: nn.Module, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+def _split_forward(
+    original_block: nn.Module, x: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor]:
     """返回加法前的残差分支输出和恒等分支输出 F(x, W)"""
 
     if isinstance(original_block, BasicBlock):
@@ -91,7 +98,9 @@ class PatchedBlock(nn.Module):
 
         raise ValueError(f"Unsupported block mode: {mode}")
 
-    def forward_collect(self, x: torch.Tensor, mode: str) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    def forward_collect(
+        self, x: torch.Tensor, mode: str
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         plain, identity = _split_forward(self.original_block, x)
         output = self.forward(x, mode=mode)
         return output, {"plain": plain, "identity": identity, "output": output}
@@ -103,7 +112,9 @@ def _replace_module(root: nn.Module, module_name: str, new_module: nn.Module) ->
     setattr(parent, child_name, new_module)
 
 
-def _match_block_spec(module: nn.Module, block_specs: Sequence[BlockSpec]) -> BlockSpec | None:
+def _match_block_spec(
+    module: nn.Module, block_specs: Sequence[BlockSpec]
+) -> BlockSpec | None:
     for spec in block_specs:
         if isinstance(module, spec.block_class):
             return spec
@@ -132,12 +143,20 @@ class InjectedModel(nn.Module):
                 if full_name in tracked_set:
                     first_tracked_index = index
                     break
-            self.stem_modules = [f"features.{name}" for name in feature_names[:first_tracked_index]]
-            self.body_modules = [f"features.{name}" for name in feature_names[first_tracked_index:]]
+            self.stem_modules = [
+                f"features.{name}" for name in feature_names[:first_tracked_index]
+            ]
+            self.body_modules = [
+                f"features.{name}" for name in feature_names[first_tracked_index:]
+            ]
         else:
-            raise TypeError(f"Unsupported backbone architecture: {type(backbone).__name__}")
+            raise TypeError(
+                f"Unsupported backbone architecture: {type(backbone).__name__}"
+            )
 
-    def _normalize_removed_blocks(self, mode: str, removed_blocks: list[str] | set[str] | None) -> set[str]:
+    def _normalize_removed_blocks(
+        self, mode: str, removed_blocks: list[str] | set[str] | None
+    ) -> set[str]:
         if mode == "full":
             return set()
         if removed_blocks is None:
@@ -168,7 +187,9 @@ class InjectedModel(nn.Module):
         return_residual_stats: bool = False,
         stop_after: str | None = None,
         start_after: str | None = None,
-    ) -> tuple[torch.Tensor, dict[str, torch.Tensor], dict[str, dict[str, torch.Tensor]]]:
+    ) -> tuple[
+        torch.Tensor, dict[str, torch.Tensor], dict[str, dict[str, torch.Tensor]]
+    ]:
         features: dict[str, torch.Tensor] = {}
         residual_stats: dict[str, dict[str, torch.Tensor]] = {}
         started = start_after is None
@@ -242,7 +263,11 @@ class InjectedModel(nn.Module):
         logits = self._forward_head(x)
         if not return_features and not return_residual_stats:
             return logits
-        return {"logits": logits, "features": features, "residual_stats": residual_stats}
+        return {
+            "logits": logits,
+            "features": features,
+            "residual_stats": residual_stats,
+        }
 
     def forward_to_split(
         self,
@@ -257,7 +282,9 @@ class InjectedModel(nn.Module):
             return self._run_modules(x, self.stem_modules)
 
         x = self._run_modules(x, self.stem_modules)
-        x, _, _ = self._run_blocks(x, mode=mode, removed_blocks=removed, stop_after=split_point)
+        x, _, _ = self._run_blocks(
+            x, mode=mode, removed_blocks=removed, stop_after=split_point
+        )
         return x
 
     def forward_from_split(
@@ -273,7 +300,9 @@ class InjectedModel(nn.Module):
             x, _, _ = self._run_blocks(x, mode=mode, removed_blocks=removed)
             return self._forward_head(x)
 
-        x, _, _ = self._run_blocks(x, mode=mode, removed_blocks=removed, start_after=split_point)
+        x, _, _ = self._run_blocks(
+            x, mode=mode, removed_blocks=removed, start_after=split_point
+        )
         return self._forward_head(x)
 
     def freeze_backbone(self) -> None:
@@ -313,12 +342,22 @@ def _mobilenet_channels(module: nn.Module) -> int:
 
 
 resnet_block_specs = (
-    BlockSpec(block_class=BasicBlock, get_channels=_resnet_basic_channels, wrap=_default_wrap),
-    BlockSpec(block_class=Bottleneck, get_channels=_resnet_bottleneck_channels, wrap=_default_wrap),
+    BlockSpec(
+        block_class=BasicBlock, get_channels=_resnet_basic_channels, wrap=_default_wrap
+    ),
+    BlockSpec(
+        block_class=Bottleneck,
+        get_channels=_resnet_bottleneck_channels,
+        wrap=_default_wrap,
+    ),
 )
 
 mobilenet_block_specs = (
-    BlockSpec(block_class=InvertedResidual, get_channels=_mobilenet_channels, wrap=_default_wrap),
+    BlockSpec(
+        block_class=InvertedResidual,
+        get_channels=_mobilenet_channels,
+        wrap=_default_wrap,
+    ),
 )
 
 
@@ -418,7 +457,9 @@ def build_model(
 
     if resolved_arch.startswith("resnet"):
         resolved_depth = depth or int(resolved_arch.replace("resnet", ""))
-        backbone = build_resnet(depth=resolved_depth, num_classes=num_classes, pretrained=pretrained)
+        backbone = build_resnet(
+            depth=resolved_depth, num_classes=num_classes, pretrained=pretrained
+        )
         return inject(
             backbone,
             block_specs=resnet_block_specs,

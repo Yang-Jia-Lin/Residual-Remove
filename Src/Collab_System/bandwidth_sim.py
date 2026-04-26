@@ -1,13 +1,14 @@
 """Src/Collab_System/bandwidth_sim.py"""
 
+
 def estimate_transfer_time_ms(
     data_bytes: int,
     bandwidth_mbps: float,
     protocol_overhead_ms: float = 2.0,
 ) -> float:
-    """ 网络传输延迟
+    """网络传输延迟
     - 输入：传输字节数
-    - 输出：传输延迟 
+    - 输出：传输延迟
     - transfer_time_ms = (bytes / bandwidth_bytes_per_ms) + protocol_overhead_ms
         - bandwidth_bytes_per_ms: bandwidth_mbps * 1e6 / 8 / 1000
         - protocol_overhead_ms: 协议固定开销，默认 2.0 ms，对应轻量级 gRPC 场景

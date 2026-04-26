@@ -1,16 +1,13 @@
 """Src/Models_Evaluation/accuracy.py"""
-from collections.abc import Iterable
+
 import time
+from collections.abc import Iterable
+
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-
-def extract_logits(output: torch.Tensor | dict) -> torch.Tensor:
-    """从模型输出中提取 logits 张量"""
-    if isinstance(output, dict):
-        return output["logits"]
-    return output
+from Src.Utils.runtime import extract_logits
 
 
 def topk_accuracy(
@@ -63,7 +60,9 @@ def evaluate_model(
             targets = targets.to(device)
             logits = extract_logits(_forward(model, images, mode, removed_blocks))
             loss = criterion(logits, targets)
-            top1, top5 = topk_accuracy(logits, targets, topk=(1, min(5, logits.size(1))))
+            top1, top5 = topk_accuracy(
+                logits, targets, topk=(1, min(5, logits.size(1)))
+            )
 
             batch_size = images.size(0)
             total_loss += float(loss.item()) * batch_size

@@ -1,10 +1,12 @@
-""" Src/Collab_System/split_runner.py
-    端边云协同推理时延仿真
-    端计算 → 传输 → 边缘计算 → 传输 → 云端计算
+"""Src/Collab_System/split_runner.py
+端边云协同推理时延仿真
+端计算 → 传输 → 边缘计算 → 传输 → 云端计算
 """
+
 import time
-import torch
 from typing import Any
+
+import torch
 
 from Src.Collab_System.bandwidth_sim import estimate_transfer_time_ms
 from Src.Collab_System.tensor_transfer import serialize_tensor
@@ -29,13 +31,14 @@ def _timed_call(fn, device: torch.device) -> tuple[Any, float]:
 def run_split_inference(
     model: torch.nn.Module,
     sample: torch.Tensor,
-    split_point: str,                       # 分割点名称，对应模型中的层/block 标识
-    bandwidth_mbps: float,                  # 模拟的传输带宽（Mbps）
-    protocol_overhead_ms: float = 0.0,      # 协议固定开销（握手、头部等），默认不加
-    compress: bool = False,                 # 是否对中间激活做压缩
-    compression_method: str = "zlib",       # 压缩算法，compress=True 时生效
-    mode: str = "full",                     # 推理模式："full"=完整网络，"removed"=删除残差后
-    removed_blocks: list[str] | None = None,# removed 模式下指定哪些 block 的残差连接被删除
+    split_point: str,  # 分割点名称，对应模型中的层/block 标识
+    bandwidth_mbps: float,  # 模拟的传输带宽（Mbps）
+    protocol_overhead_ms: float = 0.0,  # 协议固定开销（握手、头部等），默认不加
+    compress: bool = False,  # 是否对中间激活做压缩
+    compression_method: str = "zlib",  # 压缩算法，compress=True 时生效
+    mode: str = "full",  # 推理模式："full"=完整网络，"removed"=删除残差后
+    removed_blocks: list[str]
+    | None = None,  # removed 模式下指定哪些 block 的残差连接被删除
 ) -> dict[str, float]:
     """
     模拟一次完整的分割推理流程，返回各阶段时延。
@@ -64,8 +67,12 @@ def run_split_inference(
         payload_bytes —— 序列化后的激活大小（字节）
     """
     # 模型必须实现分割推理接口
-    if not hasattr(model, "forward_to_split") or not hasattr(model, "forward_from_split"):
-        raise AttributeError("Model must expose forward_to_split() and forward_from_split().")
+    if not hasattr(model, "forward_to_split") or not hasattr(
+        model, "forward_from_split"
+    ):
+        raise AttributeError(
+            "Model must expose forward_to_split() and forward_from_split()."
+        )
 
     model.eval()
     device = sample.device
@@ -84,7 +91,9 @@ def run_split_inference(
 
         # ── Stage 2: 激活序列化 + 带宽估算 ──────────────────────────────────
         # serialize_tensor 将 activation 转成字节串（可选压缩），模拟实际传输的 payload
-        payload = serialize_tensor(activation, compress=compress, method=compression_method)
+        payload = serialize_tensor(
+            activation, compress=compress, method=compression_method
+        )
         transfer_ms = estimate_transfer_time_ms(
             len(payload),
             bandwidth_mbps=bandwidth_mbps,
@@ -103,9 +112,9 @@ def run_split_inference(
         )
 
     return {
-        "edge_ms":      edge_ms,
-        "transfer_ms":  transfer_ms,
-        "cloud_ms":     cloud_ms,
-        "total_ms":     edge_ms + transfer_ms + cloud_ms,
+        "edge_ms": edge_ms,
+        "transfer_ms": transfer_ms,
+        "cloud_ms": cloud_ms,
+        "total_ms": edge_ms + transfer_ms + cloud_ms,
         "payload_bytes": float(len(payload)),
     }
