@@ -223,7 +223,6 @@ def make_dataloaders(
     image_size: int,
     num_classes: int | None = None,
     num_workers: int = 0,
-    seed: int = 42,
 ) -> DatasetBundle:
     """创建一对 DataLoader，以 DatasetBundle 形式返回
 
