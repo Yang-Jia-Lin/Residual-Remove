@@ -7,12 +7,10 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
-import torch
-
 from Configs.paras import RESULT_DIR_1
 from Scripts.Utils.script_common import add_common_args, build_setup
+from Src.Metrics.accuracy import evaluate_model
 from Src.Metrics.latency import measure_latency
-from Src.Metrics.memory import measure_activation_memory
 from Src.Utils.runtime import write_csv
 
 
@@ -49,24 +47,17 @@ def main(args) -> None:
         if getattr(args, "output", None)
         else RESULT_DIR_1
         / "Motivation1_Inference_cost"
-        / f"{current_time}_trade-off.csv"
+        / f"{current_time}_tradeoff.csv"
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     measure_images, _ = next(iter(bundle.val_loader))  # 取第一个 batch 作为固定测量输入
     measure_images = measure_images.to(device)
-    print(f"[Exp1-InferenceCost] 所有结果均使用同一 batch：{measure_images.shape}\n")
-    if args.memory_limit_gb is not None and device.type == "cuda":
-        total_gb = torch.cuda.get_device_properties(device).total_memory / (1024**3)
-        fraction = args.memory_limit_gb / total_gb
-        torch.cuda.set_per_process_memory_fraction(fraction, device)
-        print(
-            f"[Exp1] 显存限制：{args.memory_limit_gb:.1f} GB / {total_gb:.1f} GB（{fraction:.1%}）"
-        )
+    print(f"\n[Exp1-InferenceCost] 所有结果均使用同一 batch：{measure_images.shape}")
 
     # ── 第 0 步：full mode
     rows: list[dict] = []
     fwd_kwargs = {"mode": "full", "removed_blocks": None}
-    act_result = measure_activation_memory(model, measure_images, **fwd_kwargs)
+    # latency
     lat_result = measure_latency(
         model,
         measure_images,
@@ -74,12 +65,21 @@ def main(args) -> None:
         warmup=args.latency_warmup,
         **fwd_kwargs,
     )
-    full_act_mb = act_result.activation_peak_mb
     full_latency_ms = lat_result.mean_ms
-    print(f"[0/{len(blocks)}] 测量 baseline（full mode，保留所有残差）...")
+    # accuracy
+    acc_result = evaluate_model(
+        model,
+        bundle.val_loader,
+        device=device,
+        mode="full",
+        max_batches=args.max_batches,
+    )
+    full_acc_top1 = acc_result.top1
+    # results
     print(
-        f"\t激活内存峰值：{'N/A' if full_act_mb < 0 else f'{full_act_mb:.2f} MB'}\n"
+        f"[0/{len(blocks)}] 测量 baseline（full mode，保留所有残差）...\n"
         f"\t延迟：{full_latency_ms:.3f} ms"
+        f"\t精度：{full_acc_top1:.2f}%"
     )
     rows.append(
         {
@@ -89,12 +89,13 @@ def main(args) -> None:
             "mode": "full",
             "removed_count": 0,
             "removed_blocks": "",
-            "activation_peak_mb": round(full_act_mb, 2) if full_act_mb >= 0 else -1,
-            "saved_activation_mb": 0.0,
-            "saved_activation_pct": 0.0,
+            # latency
             "latency_ms": round(full_latency_ms, 4),
             "saved_latency_ms": 0.0,
             "speedup": 1.0,
+            # accuracy
+            "acc_top1": round(full_acc_top1, 4),
+            "top1_drop": 0.0,
         }
     )
 
@@ -107,22 +108,7 @@ def main(args) -> None:
             f"（{removed[0]} → {removed[-1]}）..."
         )
 
-        # 激活内存
-        act_result = measure_activation_memory(model, measure_images, **fwd_kwargs)
-        act_mb = act_result.activation_peak_mb
-        saved_act_mb = (
-            full_act_mb - act_mb if full_act_mb >= 0 and act_mb >= 0 else -1.0
-        )
-        saved_act_pct = (
-            saved_act_mb / full_act_mb * 100
-            if full_act_mb > 0 and saved_act_mb >= 0
-            else -1.0
-        )
-        act_str = (
-            "N/A" if act_mb < 0 else f"{act_mb:.2f} MB (节省 {saved_act_mb:.2f} MB)"
-        )
-
-        # 延迟
+        # latency
         lat_result = measure_latency(
             model,
             measure_images,
@@ -134,9 +120,21 @@ def main(args) -> None:
         saved_lat_ms = full_latency_ms - latency_ms
         speedup = full_latency_ms / latency_ms if latency_ms > 0 else 1.0
 
+        # accuracy
+        acc_result = evaluate_model(
+            model,
+            bundle.val_loader,
+            device=device,
+            mode="plain",
+            removed_blocks=removed,
+            max_batches=args.max_batches,
+        )
+        acc_top1 = acc_result.top1
+        top1_drop = full_acc_top1 - acc_top1
+
         print(
-            f"\t激活内存：{act_str}\n"
-            f"\t延迟：{latency_ms:.3f} ms  (加速：{speedup:.3f}×)"
+            f"\t延迟：{latency_ms:.3f} ms  (加速：{speedup:.3f}×)\n"
+            f"\t精度：{acc_top1:.2f}%  (下降：{top1_drop:+.2f}%)"
         )
         rows.append(
             {
@@ -146,33 +144,23 @@ def main(args) -> None:
                 "mode": "plain",
                 "removed_count": remove_count,
                 "removed_blocks": ",".join(removed),
-                "activation_peak_mb": round(act_mb, 2) if act_mb >= 0 else -1,
-                "saved_activation_mb": round(saved_act_mb, 2)
-                if saved_act_mb >= 0
-                else -1,
-                "saved_activation_pct": round(saved_act_pct, 2)
-                if saved_act_pct >= 0
-                else -1,
                 "latency_ms": round(latency_ms, 4),
                 "saved_latency_ms": round(saved_lat_ms, 4),
                 "speedup": round(speedup, 4),
+                "acc_top1": round(acc_top1, 4),
+                "top1_drop": round(top1_drop, 4),
             }
         )
     saved = write_csv(output_path, rows)
     print(f"\n[Exp1-InferenceCost] 完成。结果已保存至：{saved}")
 
-    # 打印简洁摘要
+    # 打印摘要
     if len(rows) > 1:
         last = rows[-1]
         print("\n[Exp1-InferenceCost] ── 摘要 ──")
-        if last["activation_peak_mb"] >= 0:
-            print(
-                f"  激活内存：{rows[0]['activation_peak_mb']:.2f} MB → {last['activation_peak_mb']:.2f} MB"
-                f"（节省 {last['saved_activation_pct']:.1f}%）"
-            )
         print(
-            f"  推理延迟：{rows[0]['latency_ms']:.3f} ms → {last['latency_ms']:.3f} ms"
-            f"（加速比 {last['speedup']:.3f}×）"
+            f"\t推理延迟：{rows[0]['latency_ms']:.3f} ms → {last['latency_ms']:.3f} ms (加速比 {last['speedup']:.3f}×)\n"
+            f"\t推理精度：{rows[0]['acc_top1']:.2f}% → {last['acc_top1']:.2f}% (下降 {last['top1_drop']:+.2f}%)"
         )
 
 
