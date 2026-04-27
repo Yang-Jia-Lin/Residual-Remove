@@ -68,6 +68,12 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--seed", type=int, default=model_config.hardware.seed, help="随机种子"
     )
+    parser.add_argument(
+        "--memory-limit-gb",
+        type=float,
+        default=model_config.hardware.max_memory_gb,
+        help="限制 GPU 显存上限（GB），用于模拟小显存设备。不指定则使用全部显存。",
+    )
 
     # ── 模型参数 ────────────────────────────────────────────────────────
     parser.add_argument(
@@ -128,6 +134,11 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
         default=model_config.hardware.num_workers,
         help="DataLoader worker 数量，默认从 model_config 读取（4）",
     )
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="输出结果路径",
+    )
 
     # ── 实验控制 ────────────────────────────────────────────────────────
     parser.add_argument(
@@ -154,7 +165,7 @@ def build_setup(
 
     device_str = model_config.hardware.device
     if device_str.startswith("cuda") and not torch.cuda.is_available():
-        print(f"[setup] ⚠ 指定了 {device_str} 但 CUDA 不可用，自动降级到 cpu")
+        print(f"[⚠setup] 指定了 {device_str} 但 CUDA 不可用，自动降级到 cpu")
         device_str = "cpu"
         model_config.hardware.device = "cpu"  # 同步降级信息
     device = torch.device(device_str)
@@ -199,7 +210,7 @@ def build_setup(
             if ckpt_path.exists():
                 load_finetuned(model, str(ckpt_path))
             else:
-                print(f"[setup] 未找到 {auto_ckpt_name}，使用原始 pretrained 权重。")
+                print(f"[⚠setup] 未找到 {auto_ckpt_name}，使用原始 pretrained 权重。")
         else:
             ckpt_path = (
                 Path(args.checkpoint)

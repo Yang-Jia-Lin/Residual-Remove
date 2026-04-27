@@ -1,4 +1,4 @@
-"""Src/Models_Evaluation/latency.py
+"""Src/Metrics/latency.py
 1. 预热（warmup）：GPU 的 JIT 编译和 CUDA kernel 初始化会在前几次推理中发生
 2. CUDA 同步：CUDA 的操作是异步的，须用 torch.cuda.synchronize() 等待 GPU 真正跑完
 3. 多次重复取均值：单次测量噪声很大，重复 20~50 次取均值稳定

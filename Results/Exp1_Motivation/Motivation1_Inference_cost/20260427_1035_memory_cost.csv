@@ -1,0 +1,2 @@
+dataset,model,batch_size,mode,removed_count,removed_blocks,peak_mb,saved_memory_mb,saved_memory_pct,latency_ms,saved_latency_ms,speedup,max_batch_size
+imagenet100,resnet50,128,full,0,,1439.19,0.0,0.0,54.3296,0.0,1.0,1024

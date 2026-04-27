@@ -1,6 +1,7 @@
-"""Src/Models_Evaluation/memory.py
+"""Src/Metrics/memory.py
 GPU：PyTorch 内置 torch.cuda.max_memory_allocated
 CPU：Python 层面没有接口。用标准库的 tracemalloc 估算，不如 GPU 精确
+现在都不准确，后续再完善
 """
 
 import tracemalloc
@@ -10,6 +11,10 @@ from typing import Any, Generator
 
 import torch
 from torch import nn
+
+# ══════════════════════════════════════════════════════════════════════════════
+# § 1  普通显存峰值占用
+# ══════════════════════════════════════════════════════════════════════════════
 
 
 @dataclass
@@ -72,6 +77,7 @@ def _measure_cuda(
 ) -> MemoryResult:
     # reset 必须在 forward 之前，否则拿到的是历史峰值而非本次峰值
     torch.cuda.synchronize(device)
+    torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats(device)
 
     with _eval_mode(model), torch.no_grad():
@@ -144,4 +150,111 @@ def compare_memory(
         plain=plain_result,
         saved_mb=saved_mb,
         saved_pct=saved_pct,
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# § 2  最大可用 batch size
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+def find_max_batch_size(
+    model: nn.Module,
+    sample_single: torch.Tensor,  # shape [1, C, H, W]，单张图
+    min_bs: int = 1,
+    max_bs: int = 1024,
+    **forward_kwargs: Any,
+) -> int:
+    """
+    二分查找：在当前显存下该配置最大能跑多大的 batch
+    返回最大可用 batch size，OOM 则返回 0
+    """
+    model.eval()
+
+    def can_run(bs: int) -> bool:
+        torch.cuda.empty_cache()
+        batch = sample_single.repeat(bs, 1, 1, 1)  # 真实分配 bs 份内存
+        try:
+            with torch.no_grad():
+                model(batch, **forward_kwargs)
+            return True
+        except torch.cuda.OutOfMemoryError:
+            return False
+
+    # 先确认 min_bs 可行
+    if not can_run(min_bs):
+        return 0
+
+    # 二分查找
+    lo, hi = min_bs, max_bs
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if can_run(mid):
+            lo = mid
+        else:
+            hi = mid - 1
+
+    return lo
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# § 3  激活内存峰值
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@dataclass
+class ActivationMemoryResult:
+    """纯激活内存峰值（已扣除模型权重占用）"""
+
+    activation_peak_mb: float
+    weight_mb: float
+    total_peak_mb: float
+    device: str
+
+    def __str__(self) -> str:
+        return (
+            f"激活内存峰值 [{self.device}]: "
+            f"{self.activation_peak_mb:.2f} MB  "
+            f"（权重基线: {self.weight_mb:.2f} MB，总峰值: {self.total_peak_mb:.2f} MB）"
+        )
+
+
+def measure_activation_memory(
+    model: nn.Module,
+    sample: torch.Tensor,
+    **forward_kwargs: Any,
+) -> ActivationMemoryResult:
+    """
+    测量一次前向推理的纯激活内存峰值。
+    激活内存 = 总峰值 - 权重基线（forward 前已分配的显存）
+    只支持 CUDA，CPU 返回 -1。
+    """
+    device = sample.device
+    if device.type != "cuda":
+        return ActivationMemoryResult(
+            activation_peak_mb=-1.0,
+            weight_mb=-1.0,
+            total_peak_mb=-1.0,
+            device="cpu",
+        )
+
+    torch.cuda.synchronize(device)
+    torch.cuda.empty_cache()
+
+    # forward 前：只有权重，没有激活
+    weight_mb = torch.cuda.memory_allocated(device) / (1024**2)
+
+    torch.cuda.reset_peak_memory_stats(device)
+    with _eval_mode(model), torch.no_grad():
+        model(sample, **forward_kwargs)
+    torch.cuda.synchronize(device)
+
+    total_peak_mb = torch.cuda.max_memory_allocated(device) / (1024**2)
+    activation_peak_mb = total_peak_mb - weight_mb
+
+    return ActivationMemoryResult(
+        activation_peak_mb=activation_peak_mb,
+        weight_mb=weight_mb,
+        total_peak_mb=total_peak_mb,
+        device=str(device),
     )

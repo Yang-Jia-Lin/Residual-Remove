@@ -8,15 +8,19 @@ import argparse
 from Scripts.Utils.script_common import add_common_args, build_setup
 from Src.Training.finetune import finetune_head
 
+if __name__ == "__main__":
+    # 通用参数
+    parser = argparse.ArgumentParser(description="Fine-tune 分类头")
+    add_common_args(parser)
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    args = parser.parse_args()
 
-def main(args=None):
-    if args is None:
-        parser = argparse.ArgumentParser(description="Fine-tune 分类头")
-        add_common_args(parser)
-        parser.add_argument("--epochs", type=int, default=10)
-        parser.add_argument("--lr", type=float, default=1e-3)
-        args = parser.parse_args()
+    # 自定义参数覆盖
+    args.model = "resnet18"
+    args.lr = 5e-4
 
+    # 初始化环境
     setup = build_setup(args)
     model, bundle, device = setup["model"], setup["bundle"], setup["device"]
 
@@ -29,15 +33,3 @@ def main(args=None):
         lr=args.lr,
         save_name=f"{args.model}_{args.dataset}.pth",
     )
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Fine-tune 分类头")
-    add_common_args(parser)
-    parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    args = parser.parse_args()
-
-    # 自定义
-    args.model = "resnet18"
-    main(args)

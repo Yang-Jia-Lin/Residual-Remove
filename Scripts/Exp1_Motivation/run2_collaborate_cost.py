@@ -1,9 +1,9 @@
 """动机实验2：删除残差在模型切分时的收益分析
-   端边云协同模型切分时，传输开销包含：数据量 → 序列化时间 → 网络传输时间 → 总系统时间
+端边云协同模型切分时，传输开销包含：数据量 → 序列化时间 → 网络传输时间 → 总系统时间
 """
+
 import argparse
 import io
-import sys
 import time
 import torch
 from pathlib import Path
@@ -12,24 +12,27 @@ from datetime import datetime
 from Configs.paras import RESULT_DIR_1
 from Configs.simulate_config import simulate_config  # <-- 新增导入
 from Scripts.Utils.script_common import add_common_args, build_setup, get_probe_batch
-from Src.Collab_System.bandwidth_sim import estimate_transfer_time_ms, saved_transfer_ratio
+from Src.Collab_System.bandwidth_sim import (
+    estimate_transfer_time_ms,
+    saved_transfer_ratio,
+)
 from Src.Utils.runtime import tensor_bytes, write_csv
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="量化删除残差在模型切分时的收益"
-    )
+    parser = argparse.ArgumentParser(description="量化删除残差在模型切分时的收益")
     add_common_args(parser)
     parser.add_argument(
-        "--output", 
+        "--output",
         default=None,
-        help="输出 CSV 路径（默认 Results/Exp1_Motivation/Motivation2_Collaborate_cost/time_system_cost.csv）")
+        help="输出 CSV 路径（默认 Results/Exp1_Motivation/Motivation2_Collaborate_cost/time_system_cost.csv）",
+    )
     parser.add_argument(
-        "--serialize-reps", 
-        type=int, 
+        "--serialize-reps",
+        type=int,
         default=20,
-        help="序列化耗时的重复测量次数，取均值以减少抖动（默认 20）")
+        help="序列化耗时的重复测量次数，取均值以减少抖动（默认 20）",
+    )
     return parser
 
 
@@ -53,18 +56,20 @@ def main() -> None:
     args = build_parser().parse_args()
     setup = build_setup(args, compensator_name="identity")
 
-    model  = setup["model"]
+    model = setup["model"]
     bundle = setup["bundle"]
     device = setup["device"]
 
     # ── 核心修改点：直接从 simulate_config 获取配置，删去 yaml 加载逻辑 ──
-    bandwidth_list       = [float(b) for b in simulate_config.bandwidth_mbps]
+    bandwidth_list = [float(b) for b in simulate_config.bandwidth_mbps]
     protocol_overhead_ms = float(simulate_config.protocol_overhead_ms)
 
     current_time = datetime.now().strftime("%Y%m%d_%H%M")
     output_path = Path(
         args.output
-        or RESULT_DIR_1 / "Motivation2_Collaborate_cost" / f"{current_time}_system_cost.csv"
+        or RESULT_DIR_1
+        / "Motivation2_Collaborate_cost"
+        / f"{current_time}_system_cost.csv"
     )
 
     print(f"\n[Exp1-Collaborate] 模型：{args.model}")
@@ -92,7 +97,7 @@ def main() -> None:
 
     for block_name, stats in residual_stats.items():
         # DAG：需要分别序列化 F(x) 和 x 两路
-        dag_plain_ms    = _measure_serialize_ms(stats["plain"],    args.serialize_reps)
+        dag_plain_ms = _measure_serialize_ms(stats["plain"], args.serialize_reps)
         dag_identity_ms = _measure_serialize_ms(stats["identity"], args.serialize_reps)
         dag_serialize_ms = dag_plain_ms + dag_identity_ms
 
@@ -108,16 +113,16 @@ def main() -> None:
         )
 
     # ── 第二步：组合所有维度，每行是 (block × bandwidth) ───────────────────────
-    print(f"\n[Exp1-Collaborate] 组合数据量 + 序列化 + 传输延迟 + 总系统时间...\n")
+    print("\n[Exp1-Collaborate] 组合数据量 + 序列化 + 传输延迟 + 总系统时间...\n")
 
     rows: list[dict] = []
 
     for block_name, stats in residual_stats.items():
         # ── 维度 1：数据量（和带宽无关，每个 block 固定）───────────────────
-        dag_bytes   = tensor_bytes(stats["plain"]) + tensor_bytes(stats["identity"])
+        dag_bytes = tensor_bytes(stats["plain"]) + tensor_bytes(stats["identity"])
         chain_bytes = tensor_bytes(stats["plain"])
         saved_bytes = dag_bytes - chain_bytes
-        size_ratio  = saved_transfer_ratio(dag_bytes, chain_bytes)
+        size_ratio = saved_transfer_ratio(dag_bytes, chain_bytes)
 
         # ── 维度 2：序列化时间（已经测好，从缓存读取）────────────────────────
         dag_serialize_ms, chain_serialize_ms = serialize_cache[block_name]
@@ -125,45 +130,49 @@ def main() -> None:
 
         for bandwidth_mbps in bandwidth_list:
             # ── 维度 3：理论网络传输时间（取决于带宽）──────────────────────
-            dag_transfer_ms   = estimate_transfer_time_ms(dag_bytes,   bandwidth_mbps, protocol_overhead_ms)
-            chain_transfer_ms = estimate_transfer_time_ms(chain_bytes, bandwidth_mbps, protocol_overhead_ms)
+            dag_transfer_ms = estimate_transfer_time_ms(
+                dag_bytes, bandwidth_mbps, protocol_overhead_ms
+            )
+            chain_transfer_ms = estimate_transfer_time_ms(
+                chain_bytes, bandwidth_mbps, protocol_overhead_ms
+            )
             saved_transfer_ms = dag_transfer_ms - chain_transfer_ms
 
             # ── 维度 4：总系统时间 = 序列化 + 网络传输 ──────────────────────
             # 这是端侧视角的完整等待时间：先打包数据，再等网络传完
-            dag_total_ms   = dag_serialize_ms   + dag_transfer_ms
+            dag_total_ms = dag_serialize_ms + dag_transfer_ms
             chain_total_ms = chain_serialize_ms + chain_transfer_ms
             saved_total_ms = dag_total_ms - chain_total_ms
-            total_saved_pct = saved_total_ms / dag_total_ms * 100 if dag_total_ms > 0 else 0.0
+            total_saved_pct = (
+                saved_total_ms / dag_total_ms * 100 if dag_total_ms > 0 else 0.0
+            )
 
-            rows.append({
-                "dataset":              bundle.source,
-                "model":                args.model,
-                "block":                block_name,
-                "bandwidth_mbps":       bandwidth_mbps,
-
-                # 维度 1：数据量对比
-                "dag_bytes":            dag_bytes,
-                "chain_bytes":          chain_bytes,
-                "saved_bytes":          saved_bytes,
-                "size_saved_pct":       round(size_ratio * 100, 2),
-
-                # 维度 2：序列化时间对比
-                "dag_serialize_ms":     round(dag_serialize_ms,   4),
-                "chain_serialize_ms":   round(chain_serialize_ms, 4),
-                "saved_serialize_ms":   round(saved_serialize_ms, 4),
-
-                # 维度 3：理论网络传输时间对比
-                "dag_transfer_ms":      round(dag_transfer_ms,   4),
-                "chain_transfer_ms":    round(chain_transfer_ms, 4),
-                "saved_transfer_ms":    round(saved_transfer_ms, 4),
-
-                # 维度 4：总系统时间对比（核心对比指标）
-                "dag_total_ms":         round(dag_total_ms,    4),
-                "chain_total_ms":       round(chain_total_ms,  4),
-                "saved_total_ms":       round(saved_total_ms,  4),
-                "total_saved_pct":      round(total_saved_pct, 2),
-            })
+            rows.append(
+                {
+                    "dataset": bundle.source,
+                    "model": args.model,
+                    "block": block_name,
+                    "bandwidth_mbps": bandwidth_mbps,
+                    # 维度 1：数据量对比
+                    "dag_bytes": dag_bytes,
+                    "chain_bytes": chain_bytes,
+                    "saved_bytes": saved_bytes,
+                    "size_saved_pct": round(size_ratio * 100, 2),
+                    # 维度 2：序列化时间对比
+                    "dag_serialize_ms": round(dag_serialize_ms, 4),
+                    "chain_serialize_ms": round(chain_serialize_ms, 4),
+                    "saved_serialize_ms": round(saved_serialize_ms, 4),
+                    # 维度 3：理论网络传输时间对比
+                    "dag_transfer_ms": round(dag_transfer_ms, 4),
+                    "chain_transfer_ms": round(chain_transfer_ms, 4),
+                    "saved_transfer_ms": round(saved_transfer_ms, 4),
+                    # 维度 4：总系统时间对比（核心对比指标）
+                    "dag_total_ms": round(dag_total_ms, 4),
+                    "chain_total_ms": round(chain_total_ms, 4),
+                    "saved_total_ms": round(saved_total_ms, 4),
+                    "total_saved_pct": round(total_saved_pct, 2),
+                }
+            )
 
     saved = write_csv(output_path, rows)
     print(f"[Exp1-Collaborate] 完成。结果已保存至：{saved}")

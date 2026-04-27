@@ -1,0 +1,17 @@
+dataset,model,batch_size,mode,removed_count,removed_blocks,peak_mb,saved_memory_mb,saved_memory_pct,latency_ms,saved_latency_ms,speedup
+imagenet100,resnet50,128,plain,1,layer4.2,1447.32,-1,-1,54.2573,0.1461,1.0027
+imagenet100,resnet50,128,plain,2,"layer4.1,layer4.2",1447.32,-1,-1,54.1366,0.2668,1.0049
+imagenet100,resnet50,128,plain,3,"layer4.0,layer4.1,layer4.2",1447.32,-1,-1,53.2167,1.1867,1.0223
+imagenet100,resnet50,128,plain,4,"layer3.5,layer4.0,layer4.1,layer4.2",1447.32,-1,-1,52.9369,1.4665,1.0277
+imagenet100,resnet50,128,plain,5,"layer3.4,layer3.5,layer4.0,layer4.1,layer4.2",1447.32,-1,-1,52.5975,1.8059,1.0343
+imagenet100,resnet50,128,plain,6,"layer3.3,layer3.4,layer3.5,layer4.0,layer4.1,layer4.2",1447.32,-1,-1,52.2822,2.1213,1.0406
+imagenet100,resnet50,128,plain,7,"layer3.2,layer3.3,layer3.4,layer3.5,layer4.0,layer4.1,layer4.2",1447.32,-1,-1,51.946,2.4574,1.0473
+imagenet100,resnet50,128,plain,8,"layer3.1,layer3.2,layer3.3,layer3.4,layer3.5,layer4.0,layer4.1,layer4.2",1447.32,-1,-1,51.6401,2.7633,1.0535
+imagenet100,resnet50,128,plain,9,"layer3.0,layer3.1,layer3.2,layer3.3,layer3.4,layer3.5,layer4.0,layer4.1,layer4.2",1447.32,-1,-1,50.2576,4.1458,1.0825
+imagenet100,resnet50,128,plain,10,"layer2.3,layer3.0,layer3.1,layer3.2,layer3.3,layer3.4,layer3.5,layer4.0,layer4.1,layer4.2",1447.32,-1,-1,49.5983,4.8051,1.0969
+imagenet100,resnet50,128,plain,11,"layer2.2,layer2.3,layer3.0,layer3.1,layer3.2,layer3.3,layer3.4,layer3.5,layer4.0,layer4.1,layer4.2",1447.32,-1,-1,48.9553,5.4481,1.1113
+imagenet100,resnet50,128,plain,12,"layer2.1,layer2.2,layer2.3,layer3.0,layer3.1,layer3.2,layer3.3,layer3.4,layer3.5,layer4.0,layer4.1,layer4.2",1447.32,-1,-1,48.2838,6.1196,1.1267
+imagenet100,resnet50,128,plain,13,"layer2.0,layer2.1,layer2.2,layer2.3,layer3.0,layer3.1,layer3.2,layer3.3,layer3.4,layer3.5,layer4.0,layer4.1,layer4.2",1446.82,-1,-1,45.9409,8.4625,1.1842
+imagenet100,resnet50,128,plain,14,"layer1.2,layer2.0,layer2.1,layer2.2,layer2.3,layer3.0,layer3.1,layer3.2,layer3.3,layer3.4,layer3.5,layer4.0,layer4.1,layer4.2",1446.82,-1,-1,44.6231,9.7803,1.2192
+imagenet100,resnet50,128,plain,15,"layer1.1,layer1.2,layer2.0,layer2.1,layer2.2,layer2.3,layer3.0,layer3.1,layer3.2,layer3.3,layer3.4,layer3.5,layer4.0,layer4.1,layer4.2",1446.82,-1,-1,43.2933,11.1101,1.2566
+imagenet100,resnet50,128,plain,16,"layer1.0,layer1.1,layer1.2,layer2.0,layer2.1,layer2.2,layer2.3,layer3.0,layer3.1,layer3.2,layer3.3,layer3.4,layer3.5,layer4.0,layer4.1,layer4.2",1446.82,-1,-1,40.5012,13.9022,1.3433
