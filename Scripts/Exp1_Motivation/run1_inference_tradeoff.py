@@ -1,5 +1,4 @@
 """Scripts/Exp1_Motivation/run1_inference_cost.py
-动机实验1：删除残差的推理收益和损失分析
 在同样的【模型/硬件/数据】下，逐阶段删除残差后的【精度/FLOPS/延迟】变化
 """
 

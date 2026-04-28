@@ -1,4 +1,4 @@
-"""Src/Plots/plot_inference_tradeoff.py"""
+"""Scripts/Exp1_Motivation/plot1_inference_tradeoff.py"""
 
 import csv
 from pathlib import Path
@@ -67,13 +67,10 @@ def plot_inference_tradeoff(rows: Sequence[dict], save_path: Path):
         lines,
         labels,
         loc="upper right",
-        # 1. 边框与背景设置
-        facecolor="white",  # 白色背景
-        framealpha=0,  # 透明度
-        borderpad=0.2,  # 图例整体的内边距（边框到内容的距离，默认通常为 0.4）
-        labelspacing=0.3,  # 图例项之间的垂直行间距（默认通常为 0.5）
-        handletextpad=0.5,  # 图例标识（线/点）与对应文字之间的水平间距（默认通常为 0.8）
-        borderaxespad=0.2,  # 图例的外边距（图例边框到坐标轴边缘的距离，默认通常为 0.5）
+        frameon=True,
+        handlelength=1.5,
+        handletextpad=0.2,
+        borderpad=0.3,
     )
 
     # ── 标题 ──────────────────────────────────────────────────────────────────
