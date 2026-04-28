@@ -38,7 +38,7 @@ def set_ieee_style(mode="single"):
         "axes.titlesize": 14,  # 标题大小
         "axes.labelsize": 12,  # 坐标轴标签大小
         "font.size": 12,  # 全局字体
-        "legend.fontsize": 11,  # 图例大小
+        "legend.fontsize": 10,  # 图例大小
         "xtick.labelsize": 11,  # 刻度大小
         "ytick.labelsize": 11,
         # 线条与点

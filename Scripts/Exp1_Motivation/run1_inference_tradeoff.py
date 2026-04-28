@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from Configs.paras import RESULT_DIR_1
+from Scripts.Exp1_Motivation.plot1_inference_tradeoff import plot_inference_tradeoff
 from Scripts.Utils.script_common import add_common_args, build_setup
 from Src.Metrics.accuracy import evaluate_model
 from Src.Metrics.latency import measure_latency
@@ -34,7 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(args) -> None:
+def main(args):
     # 初始化环境
     setup = build_setup(args, compensator_name="identity")
     model = setup["model"]
@@ -154,6 +155,9 @@ def main(args) -> None:
     saved = write_csv(output_path, rows)
     print(f"\n[Exp1-InferenceCost] 完成。结果已保存至：{saved}")
 
+    # 绘图
+    plot_inference_tradeoff(rows, output_path.with_name(output_path.stem + "_plot"))
+
     # 打印摘要
     if len(rows) > 1:
         last = rows[-1]
@@ -167,6 +171,6 @@ def main(args) -> None:
 if __name__ == "__main__":
     # nohup Scripts/Exp1_Motivation/run1_inference_cost.sh < /dev/null > Results/Exp1_Motivation/Motivation1_Inference_cost/$(date +%Y%m%d_%H%M).log 2>&1 &
     args = build_parser().parse_args()
-    args.batch_size = 128
+    args.batch_size = 512
     # args.memory_limit_gb = 8  # 可选：限制显存使用，模拟在显存受限环境下的效果
     main(args)

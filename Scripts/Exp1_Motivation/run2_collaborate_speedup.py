@@ -23,11 +23,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="量化删除残差在模型切分时的收益")
     add_common_args(parser)
     parser.add_argument(
-        "--output",
-        default=None,
-        help="输出 CSV 路径（默认 Results/Exp1_Motivation/Motivation2_Collaborate_cost/time_system_cost.csv）",
-    )
-    parser.add_argument(
         "--serialize-reps",
         type=int,
         default=20,
@@ -38,9 +33,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _measure_serialize_ms(tensor: torch.Tensor, repetitions: int) -> float:
     """实测将一个张量序列化为字节流所需的时间（毫秒），取多次均值。
-
     使用 torch.save 写入内存中的 BytesIO，模拟端侧设备打包特征图的真实操作。
-    张量先移到 CPU，因为网络发送前必须先从 GPU 显存拷贝到内存，这个开销是真实存在的。
+    张量先移到 CPU，因为网络发送前必须先从 GPU 显存拷贝到内存
     """
     tensor_cpu = tensor.cpu()
     timings: list[float] = []
@@ -52,15 +46,12 @@ def _measure_serialize_ms(tensor: torch.Tensor, repetitions: int) -> float:
     return sum(timings) / len(timings)
 
 
-def main() -> None:
-    args = build_parser().parse_args()
+def main(args):
+    # 初始化环境
     setup = build_setup(args, compensator_name="identity")
-
     model = setup["model"]
     bundle = setup["bundle"]
     device = setup["device"]
-
-    # ── 核心修改点：直接从 simulate_config 获取配置，删去 yaml 加载逻辑 ──
     bandwidth_list = [float(b) for b in simulate_config.bandwidth_mbps]
     protocol_overhead_ms = float(simulate_config.protocol_overhead_ms)
 
@@ -69,14 +60,13 @@ def main() -> None:
         args.output
         or RESULT_DIR_1
         / "Motivation2_Collaborate_cost"
-        / f"{current_time}_system_cost.csv"
+        / f"{current_time}_collaborate.csv"
     )
 
     print(f"\n[Exp1-Collaborate] 模型：{args.model}")
     print(f"[Exp1-Collaborate] 带宽场景：{bandwidth_list} Mbps")
     print(f"[Exp1-Collaborate] 协议固定开销：{protocol_overhead_ms} ms")
     print(f"[Exp1-Collaborate] 序列化重复次数：{args.serialize_reps}")
-    print(f"[Exp1-Collaborate] 结果将写入：{output_path}\n")
 
     # batch_size=1：关心单张图片的张量大小，不需要 batch 维度的统计意义
     images, _ = get_probe_batch(bundle, device, batch_size=1)
@@ -183,4 +173,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    args = build_parser().parse_args()
+    main(args)

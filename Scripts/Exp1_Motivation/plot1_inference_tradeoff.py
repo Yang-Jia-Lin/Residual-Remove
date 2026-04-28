@@ -1,175 +1,94 @@
-"""Scripts/Exp1_Motivation/plot_acc_latency_memory.py"""
+"""Src/Plots/plot_inference_tradeoff.py"""
 
 import csv
 from pathlib import Path
+from typing import Sequence
 
 import matplotlib.pyplot as plt
-import numpy as np
-from matplotlib.ticker import MaxNLocator
 
 from Configs.paras import COLORS
 from Src.Utils.plot_utils import save_fig_for_ieee, set_ieee_style
 
-_CLR_MEMORY = COLORS["blue"]
-_CLR_LATENCY = COLORS["red"]
-_CLR_ACC = COLORS["green"]
-_CLR_BASE = COLORS["grey"]
+# ── 调色 ──────────────────────────────────────────────────────────────────────
+_COLOR_LAT = COLORS["blue"]  # 蓝：延迟
+_COLOR_ACC = COLORS["red"]  # 红：精度
+_MARKER_LAT = "o"
+_MARKER_ACC = "s"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-def load_rows_from_csv(csv_path: Path) -> list[dict]:
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        return list(csv.DictReader(f))
+def plot_inference_tradeoff(rows: Sequence[dict], save_path: Path):
+    # 提取数据
+    x = [r["removed_count"] for r in rows]
+    latency_ms = [r["latency_ms"] for r in rows]
+    acc_top1 = [r["acc_top1"] for r in rows]
 
-
-def _extract_plain(rows: list[dict], key: str) -> tuple[np.ndarray, np.ndarray, float]:
-    """
-    返回 (x_counts, y_values_pct_of_baseline, baseline)
-    baseline 取 mode=="full" 行的对应字段值，y 归一化为 baseline 的百分比。
-    """
-    baseline_row = next((r for r in rows if r["mode"] == "full"), None)
-    if baseline_row is None:
-        raise ValueError("CSV 中缺少 mode=='full' 的 baseline 行")
-    base_val = float(baseline_row[key])
-
-    plain = sorted(
-        [r for r in rows if r["mode"] == "plain"],
-        key=lambda r: int(r["removed_count"]),
-    )
-    counts = np.array([int(r["removed_count"]) for r in plain])
-    vals = np.array([float(r[key]) for r in plain])
-    pct = vals / base_val * 100.0
-    return counts, pct, base_val
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-def plot_combined_cost(
-    cost_rows: list[dict],  # 来自 run1_inference_cost.py 的 CSV
-    acc_rows: list[dict],  # 来自 run3_acc_drop.py 的 CSV
-    save_dir: Path | None = None,
-    model_name: str | None = None,
-) -> None:
-    """
-    将峰值显存、推理延迟、Top-1 精度绘制在同一坐标系内（归一化为 baseline %）。
-    """
-    # ── 1. 提取各条曲线 ──────────────────────────────────────────────────────
-    has_memory = True
-    try:
-        x_mem, y_mem, base_mem = _extract_plain(cost_rows, "peak_mb")
-        if base_mem < 0:  # CPU 运行时无显存数据
-            has_memory = False
-    except Exception:
-        has_memory = False
-
-    x_lat, y_lat, base_lat = _extract_plain(cost_rows, "latency_ms")
-    x_acc, y_acc, base_acc = _extract_plain(acc_rows, "top1")
-
-    # ── 2. 画布 ──────────────────────────────────────────────────────────────
+    # 画布
     set_ieee_style(mode="single")
+    fig, ax_lat = plt.subplots()
 
-    fig, ax = plt.subplots()
-
-    # baseline 参考线（100%）
-    x_max = int(max(x_lat.max(), x_acc.max())) + 1
-    ax.axhline(
-        y=100,
-        color=_CLR_BASE if True else "grey",
-        linestyle="--",
-        linewidth=1.0,
-        alpha=0.6,
-        zorder=1,
-    )
-
-    # ── 3. 三条曲线 ──────────────────────────────────────────────────────────
-    if has_memory:
-        ax.plot(
-            x_mem,
-            y_mem,
-            color=_CLR_MEMORY,
-            marker="o",
-            markersize=4,
-            linewidth=2,
-            label="Peak Memory",
-            zorder=3,
-        )
-
-    ax.plot(
-        x_lat,
-        y_lat,
-        color=_CLR_LATENCY,
-        marker="s",
-        markersize=4,
-        linewidth=2,
-        label="Latency",
+    # 左轴：延迟
+    ln_lat = ax_lat.plot(
+        x,
+        latency_ms,
+        color=_COLOR_LAT,
+        marker=_MARKER_LAT,
+        label="Latency (ms)",
         zorder=3,
     )
+    ax_lat.set_xlabel("Number of Removed Residual Blocks")
+    ax_lat.set_ylabel("Inference Latency (ms)", color=_COLOR_LAT)
+    ax_lat.tick_params(axis="y", labelcolor=_COLOR_LAT)
+    ax_lat.set_xticks(x)
 
-    # ax.plot(x_acc, y_acc,
-    #         color=_CLR_ACC, marker="^", markersize=4,
-    #         linewidth=2, label="Top-1 Accuracy", zorder=3)
-
-    # ── 4. 末端标注（绝对值，方便读图）────────────────────────────────────────
-    def _annotate_end(ax, x_arr, y_pct_arr, base_val, unit, color, offset=(6, 0)):
-        abs_val = y_pct_arr[-1] / 100.0 * base_val
-        ax.annotate(
-            f"{abs_val:.1f}{unit}",
-            xy=(x_arr[-1], y_pct_arr[-1]),
-            xytext=offset,
-            textcoords="offset points",
-            fontsize=8,
-            color=color,
-            va="center",
-        )
-
-    if has_memory:
-        _annotate_end(ax, x_mem, y_mem, base_mem, " MB", _CLR_MEMORY)
-    _annotate_end(ax, x_lat, y_lat, base_lat, " ms", _CLR_LATENCY)
-    # _annotate_end(ax, x_acc, y_acc, base_acc, "%",   _CLR_ACC)
-
-    # ── 5. 轴标签、图例、网格 ────────────────────────────────────────────────
-    ax.set_xlabel("Number of Removed Residual Blocks")
-    ax.set_ylabel("Relative to Baseline (%)")
-    ax.set_xlim(left=0, right=x_max)
-    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-
-    ax.legend(
-        loc="lower left",
-        fontsize=9,
-        frameon=True,
-        handlelength=1.5,
-        handletextpad=0.3,
-        borderpad=0.5,
+    # ── 右轴：精度 ────────────────────────────────────────────────────────────
+    ax_acc = ax_lat.twinx()
+    ln_acc = ax_acc.plot(
+        x,
+        acc_top1,
+        color=_COLOR_ACC,
+        marker=_MARKER_ACC,
+        linestyle="--",
+        label="Top-1 Acc (%)",
+        zorder=3,
     )
-    ax.grid(axis="both", linestyle="--", alpha=0.4)
-    ax.set_axisbelow(True)
+    ax_acc.set_ylabel("Top-1 Accuracy (%)", color=_COLOR_ACC)
+    ax_acc.tick_params(axis="y", labelcolor=_COLOR_ACC)
 
-    title_model = model_name or (cost_rows[0].get("model", "") if cost_rows else "")
-    if title_model:
-        ax.set_title("Residual Removal Trade-off", fontsize=11)
+    # ── baseline 参考线（removed_count == 0）────────────────────────────────
+    ax_lat.axvline(x=0, color="gray", linewidth=1.0, linestyle=":", alpha=0.7)
 
-    plt.tight_layout(pad=0.4)
+    # ── 图例（合并两轴）──────────────────────────────────────────────────────
+    lines = ln_lat + ln_acc
+    labels = [line.get_label() for line in lines]
+    ax_lat.legend(lines, labels, loc="upper right")
 
-    # ── 6. 保存 ──────────────────────────────────────────────────────────────
-    if save_dir is not None:
-        save_dir = Path(save_dir)
-        save_dir.mkdir(parents=True, exist_ok=True)
-        stem = f"{title_model}" if title_model else "Combined"
-        save_fig_for_ieee(save_dir / stem, fig=fig)
+    # ── 标题 ──────────────────────────────────────────────────────────────────
+    title = "Inference Latency vs. Accuracy Trade-off"
+    ax_lat.set_title(title)
 
-    plt.show()
+    # ── 保存 ──────────────────────────────────────────────────────────────────
+    plt.tight_layout(pad=0.15)
+    save_fig_for_ieee(save_path, fig)
     plt.close(fig)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+def plot_from_csv(csv_path: Path):
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+
+    # 类型转换
+    for r in rows:
+        r["removed_count"] = int(r["removed_count"])
+        r["latency_ms"] = float(r["latency_ms"])
+        r["acc_top1"] = float(r["acc_top1"])
+    rows.sort(key=lambda r: r["removed_count"])
+
+    save_path = csv_path.with_name(csv_path.stem + "_plot")
+    plot_inference_tradeoff(rows, save_path)
+
+
 if __name__ == "__main__":
-    _ROOT = Path("/root/autodl-tmp/Residual-Remove/Results/Exp1_Motivation")
-    save_dir = _ROOT / "Motivation1_Inference_cost"
-    cost_csv = _ROOT / "Motivation1_Inference_cost" / "20260412_2150_memory_cost.csv"
-    acc_csv = _ROOT / "Motivation3_Acc_drop" / "20260412_2157_acc_drop.csv"
-
-    cost_rows = load_rows_from_csv(cost_csv)
-    acc_rows = load_rows_from_csv(acc_csv)
-    model_name = cost_rows[0]["model"] if cost_rows else None
-
-    csv_stem = Path(cost_csv).stem
-    plot_combined_cost(cost_rows, acc_rows, save_dir=save_dir, model_name=csv_stem)
+    example_csv = Path(
+        "/root/autodl-tmp/ResidualRemove/Results/Exp1_Motivation/Motivation1_Inference_cost/20260428_0901_tradeoff.csv"
+    )
+    plot_from_csv(example_csv)
