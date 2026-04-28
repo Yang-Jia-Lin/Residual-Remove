@@ -3,6 +3,7 @@
 """
 
 import argparse
+import logging
 import random
 from pathlib import Path
 from typing import Any
@@ -153,8 +154,12 @@ def build_setup(
     args: argparse.Namespace,
     compensator_name: str = "identity",
     compensator_rank: int = 16,
+    logger: logging.Logger | None = None,
 ) -> dict[str, Any]:
     """模型、数据集、设备初始化"""
+
+    log = logger.info if logger else print
+    warn = logger.warning if logger else print
 
     # 1. 全局参数
     model_config.hardware.device = args.device
@@ -165,7 +170,7 @@ def build_setup(
 
     device_str = model_config.hardware.device
     if device_str.startswith("cuda") and not torch.cuda.is_available():
-        print(f"[⚠setup] 指定了 {device_str} 但 CUDA 不可用，自动降级到 cpu")
+        warn(f"[⚠setup] 指定了 {device_str} 但 CUDA 不可用，自动降级到 cpu")
         device_str = "cpu"
         model_config.hardware.device = "cpu"  # 同步降级信息
     device = torch.device(device_str)
@@ -210,7 +215,7 @@ def build_setup(
             if ckpt_path.exists():
                 load_finetuned(model, str(ckpt_path))
             else:
-                print(f"[⚠setup] 未找到 {auto_ckpt_name}，使用原始 pretrained 权重。")
+                warn(f"[⚠setup] 未找到 {auto_ckpt_name}，使用原始 pretrained 权重。")
         else:
             ckpt_path = (
                 Path(args.checkpoint)
@@ -223,16 +228,10 @@ def build_setup(
                 raise FileNotFoundError(f"找不到指定的权重文件: {ckpt_path}")
     n_blocks = len(model.get_block_names())
 
-    print(
-        f"[setup-hardw]\t{device}\t\tnum_workers：{model_config.hardware.num_workers}\t\t种子：{seed}"
-    )
-    print(
-        f"[setup-model]\t{args.model}\t残差块数：{n_blocks}\t\t预训练：{args.pretrained}"
-    )
-    print(
-        f"[setup- data]\t{model_config.data.default_dataset}\t图片尺寸：{final_image_size}×{final_image_size}\t类别数：{bundle.num_classes}"
-    )
-    print(
+    log(
+        f"\n[setup-hardw]\t{device}\t\tnum_workers：{model_config.hardware.num_workers}\t\t种子：{seed}\n"
+        f"[setup-model]\t{args.model}\t残差块数：{n_blocks}\t\t预训练：{args.pretrained}\n"
+        f"[setup- data]\t{model_config.data.default_dataset}\t图片尺寸：{final_image_size}×{final_image_size}\t类别数：{bundle.num_classes}\n"
         f"[setup-batch]\t{model_config.train.batch_size}\t\t验证批次：{len(bundle.val_loader)}"
     )
 
