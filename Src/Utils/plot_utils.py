@@ -42,8 +42,8 @@ def set_ieee_style(mode="single"):
         "xtick.labelsize": 11,  # 刻度大小
         "ytick.labelsize": 11,
         # 线条与点
-        "lines.linewidth": 2,  # 稍微加粗线条
-        "lines.markersize": 4,  # 标记点大小
+        "lines.linewidth": 1.5,  # 稍微加粗线条
+        "lines.markersize": 3,  # 标记点大小
         # 嵌入字体
         "pdf.fonttype": 42,
         "ps.fonttype": 42,
@@ -61,19 +61,16 @@ def set_ieee_style(mode="single"):
     print(f"IEEE Style ({mode}) initialized.")
 
 
-def save_fig_for_ieee(save_path, fig=None):
-    """
-    如果传了 fig，就存 fig；没传，就存当前活跃的图 (plt)
-    """
+def save_fig_for_ieee(save_path, fig=None, pad=0.07):
     target = fig if fig is not None else plt
     target.savefig(
-        save_path.with_suffix(".pdf"), format="pdf", bbox_inches="tight", pad_inches=0
+        save_path.with_suffix(".pdf"), format="pdf", bbox_inches="tight", pad_inches=pad
     )
     target.savefig(
         save_path.with_suffix(".png"),
         format="png",
         bbox_inches="tight",
-        pad_inches=0,
+        pad_inches=pad,
         dpi=300,
     )
     print(f"图已保存至: {save_path}")

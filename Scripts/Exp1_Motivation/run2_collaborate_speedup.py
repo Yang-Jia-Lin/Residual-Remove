@@ -11,6 +11,7 @@ from datetime import datetime
 
 from Configs.paras import RESULT_DIR_1
 from Configs.simulate_config import simulate_config  # <-- 新增导入
+from Scripts.Exp1_Motivation.plot2_collaborate_speedup import plot_collab_cost
 from Scripts.Utils.script_common import add_common_args, build_setup, get_probe_batch
 from Src.Collab_System.bandwidth_sim import (
     estimate_transfer_time_ms,
@@ -166,6 +167,9 @@ def main(args):
 
     saved = write_csv(output_path, rows)
     print(f"[Exp1-Collaborate] 完成。结果已保存至：{saved}")
+
+    # 绘图
+    plot_collab_cost(rows, output_path.with_name(output_path.stem + "_plot"))
     print(
         f"[Exp1-Collaborate] 共 {len(rows)} 行"
         f" = {len(blocks)} 块 × {len(bandwidth_list)} 种带宽场景"
