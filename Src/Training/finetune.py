@@ -91,6 +91,12 @@ def load_finetuned(model: nn.Module, save_name: str = "finetuned.pth") -> nn.Mod
             "请先运行 Scripts/Utils/run_finetune.py 生成基线模型。"
         )
     ckpt = torch.load(ckpt_path, map_location="cpu")
-    model.load_state_dict(ckpt["state_dict"])
+
+    # strict=False：补偿器参数不在 checkpoint 里，允许缺失
+    missing, _ = model.load_state_dict(ckpt["state_dict"], strict=False)
+    non_compensator_missing = [k for k in missing if "compensator" not in k]
+    if non_compensator_missing:
+        raise RuntimeError(f"backbone 权重加载不完整：{non_compensator_missing}")
+
     print(f"[load] 已加载 checkpoint（best_acc={ckpt['best_acc']:.2f}%）：{ckpt_path}")
     return model

@@ -1,0 +1,17 @@
+21:40:44  
+[setup-hardw]	cuda:0		num_workers：4		种子：42
+[setup-model]	resnet50	残差块数：16		预训练：True
+[setup- data]	imagenet100	图片尺寸：224×224	类别数：100
+[setup-batch]	64		验证批次：396
+21:40:44  
+============================================================
+[Exp2]	 补偿方法对比
+[Exp2]	 calib_size:4196	 epochs:3	 lr:0.001
+[Exp2]	 removed_block:1	 (layer3.2 → layer3.2)
+[Exp2]	 batch_size:64	 batch shape: torch.Size([64, 3, 224, 224])（固定）
+============================================================
+
+
+21:40:44  [2] affine  (compensator=affine, rank=0)
+21:40:45  	校准中（3 epochs, calib_size=4196, lr=0.001）...
+21:41:05  	校准完成，最终 loss=44.557791

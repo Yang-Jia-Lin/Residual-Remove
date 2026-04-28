@@ -118,7 +118,7 @@ def _measure_all(
         max_batches=max_batches,
     )
     logger.info(
-        f"\t精度: top1={acc.top1:.2f}%\t\ttop5={acc.top5:.2f}%\tloss={acc.loss:.4f}"
+        f"    精度: top1={acc.top1:.2f}%\t top5={acc.top5:.2f}%\t loss={acc.loss:.4f}"
     )
 
     # 延迟
@@ -129,12 +129,12 @@ def _measure_all(
         warmup=latency_warmup,
         **fwd_kwargs,
     )
-    logger.info(f"\t延迟: 均值={lat.mean_ms:.3f} ms\t\tstd=±{lat.std_ms:.3f} ms")
+    logger.info(f"    延迟: 均值={lat.mean_ms:.3f} ms\t std=±{lat.std_ms:.3f} ms")
 
     # 静态参数
     macs = estimate_macs(model, sample, **fwd_kwargs)
     params = count_parameters(model)
-    logger.info(f"\t规模: params={params:,}\tMACs={macs:,}\n\n")
+    logger.info(f"    规模: params={params:,}\t MACs={macs:,}\n\n")
 
     return {
         "top1": round(acc.top1, 4),
@@ -179,7 +179,7 @@ def main(args):
         f"\n{'=' * 60}\n"
         f"[Exp2]\t 补偿方法对比\n"
         f"[Exp2]\t calib_size:{args.calib_size}\t epochs:{args.epochs}\t lr:{args.lr}\n"
-        f"[Exp2]\t removed_block:{len(removed_blocks)}  ({removed_blocks[0]} → {removed_blocks[-1]})\n"
+        f"[Exp2]\t removed_block:{len(removed_blocks)}\t ({removed_blocks[0]} → {removed_blocks[-1]})\n"
         f"[Exp2]\t batch_size:{args.batch_size}\t batch shape: {sample.shape}（固定）\n"
         f"{'=' * 60}\n\n"
     )
@@ -322,6 +322,7 @@ def main(args):
 
 if __name__ == "__main__":
     args = build_parser().parse_args()
+    args.epochs = 10
     args.calib_size = 4196
     args.removed_blocks = "layer3.2"
     main(args)
