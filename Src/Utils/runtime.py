@@ -54,3 +54,19 @@ def safe_item(value: torch.Tensor | float | int) -> float:
     if isinstance(value, torch.Tensor):
         return float(value.detach().cpu().item())
     return float(value)
+
+
+def fmt_params(n: int) -> str:
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.2f} M"
+    if n >= 1_000:
+        return f"{n / 1_000:.1f} K"
+    return str(n)
+
+
+def fmt_macs(n: int) -> str:
+    if n >= 1_000_000_000:
+        return f"{n / 1_000_000_000:.2f} G"
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f} M"
+    return str(n)

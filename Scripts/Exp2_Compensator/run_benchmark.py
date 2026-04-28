@@ -19,7 +19,7 @@ from Src.Metrics.latency import measure_latency
 from Src.Metrics.static_cost import count_parameters, estimate_macs
 from Src.Training.calibrate import calibrate_compensators
 from Src.Utils.data_utils import build_calibration_loader
-from Src.Utils.runtime import write_csv
+from Src.Utils.runtime import fmt_macs, fmt_params, write_csv
 
 # 补偿方法列表
 VARIANTS: list[tuple[str, str, int]] = [
@@ -117,10 +117,6 @@ def _measure_all(
         removed_blocks=removed_blocks,
         max_batches=max_batches,
     )
-    logger.info(
-        f"    精度: top1={acc.top1:.2f}%\t top5={acc.top5:.2f}%\t loss={acc.loss:.4f}"
-    )
-
     # 延迟
     lat = measure_latency(
         model,
@@ -129,13 +125,17 @@ def _measure_all(
         warmup=latency_warmup,
         **fwd_kwargs,
     )
-    logger.info(f"    延迟: 均值={lat.mean_ms:.3f} ms\t std=±{lat.std_ms:.3f} ms")
-
     # 静态参数
     macs = estimate_macs(model, sample, **fwd_kwargs)
     params = count_parameters(model)
-    logger.info(f"    规模: params={params:,}\t MACs={macs:,}\n\n")
 
+    # 结果
+    logger.info(
+        "\n"
+        f"  精度:   top1={acc.top1:.2f} %\t top5={acc.top5:.2f} %\t loss={acc.loss:>7.4f}\n"
+        f"  延迟:   mean={lat.mean_ms:.2f} ms\t std=±{lat.std_ms:.2f} ms\n"
+        f"  规模: params={fmt_params(params)}\t MACs={fmt_macs(macs):8}\n"
+    )
     return {
         "top1": round(acc.top1, 4),
         "top5": round(acc.top5, 4),
@@ -176,12 +176,12 @@ def main(args):
         else model_config.hardware.seed,
     )
     logger.info(
-        f"\n{'=' * 60}\n"
+        f"\n{'=' * 80}\n"
         f"[Exp2]\t 补偿方法对比\n"
         f"[Exp2]\t calib_size:{args.calib_size}\t epochs:{args.epochs}\t lr:{args.lr}\n"
         f"[Exp2]\t removed_block:{len(removed_blocks)}\t ({removed_blocks[0]} → {removed_blocks[-1]})\n"
-        f"[Exp2]\t batch_size:{args.batch_size}\t batch shape: {sample.shape}（固定）\n"
-        f"{'=' * 60}\n\n"
+        f"[Exp2]\t batch_size:{args.batch_size}\t\t batch shape: {sample.shape}（固定）\n"
+        f"{'=' * 80}\n\n"
     )
 
     # 1. full_model
@@ -302,12 +302,9 @@ def main(args):
     logger.info(f"结果已保存至：{saved}")
 
     # ── 5. 打印摘要表格 ───────────────────────────────────────────────────
-    logger.info("\n" + "=" * 60)
     logger.info("摘要（按 Top-1 降序）")
     logger.info("=" * 60)
-    header = (
-        f"{'方法':<18} {'Top-1':>7} {'延迟(ms)':>10} {'内存(MB)':>10} {'参数量':>12}"
-    )
+    header = f"{'方法':<15} {'Top-1':>7} {'延迟(ms)':>10} {'参数量':>7}"
     logger.info(header)
     logger.info("-" * 60)
     for row in sorted(rows, key=lambda r: r["top1"], reverse=True):
@@ -324,5 +321,5 @@ if __name__ == "__main__":
     args = build_parser().parse_args()
     args.epochs = 10
     args.calib_size = 4196
-    args.removed_blocks = "layer3.2"
+    args.removed_blocks = "layer2.2"
     main(args)

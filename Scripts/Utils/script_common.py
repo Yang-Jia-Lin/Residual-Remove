@@ -232,7 +232,7 @@ def build_setup(
         f"\n[setup-hardw]\t{device}\t\tnum_workers：{model_config.hardware.num_workers}\t\t种子：{seed}\n"
         f"[setup-model]\t{args.model}\t残差块数：{n_blocks}\t\t预训练：{args.pretrained}\n"
         f"[setup- data]\t{model_config.data.default_dataset}\t图片尺寸：{final_image_size}×{final_image_size}\t类别数：{bundle.num_classes}\n"
-        f"[setup-batch]\t{model_config.train.batch_size}\t\t验证批次：{len(bundle.val_loader)}"
+        f"[setup-batch]\t{model_config.train.batch_size}\t\t验证批次：{len(bundle.val_loader)}\n"
     )
 
     return {"model": model, "bundle": bundle, "device": device}
